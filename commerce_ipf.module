@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ * Defines a product reference field widget that allows for inline product
+ * creation, updating, and deletion on another entity's add / edit form.
+ */
+
+
+/**
+ * Implements hook_field_widget_info().
+ *
+ * Defines widgets available for use with field types as specified in each
+ * widget's $info['field types'] array.
+ */
+function commerce_ipf_field_widget_info() {
+  $widgets = array();
+
+  // Define the inline product form widget for the product reference field.
+  $widgets['commerce_inline_product_form'] = array(
+    'label' => t('Product form'),
+    'description' => t('Display a product add / edit form that can reference existing products or create new products on the fly.'),
+    'field types' => array('commerce_product_reference'),
+    'settings' => array(),
+    'behaviors' => array(),
+  );
+
+  return $widgets;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * Used to define the form element for custom widgets.
+ */
+function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  // Define the autocomplete textfield for products.
+  if ($instance['widget']['type'] == 'commerce_inline_product_form') {
+    return $element + array(
+      '#type' => 'textfield',
+      '#default_value' => t('Test'),
+    );
+  }
+}
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function commerce_ipf_field_widget_error($element, $error) {
+  form_error($element, $error['message']);
+}
