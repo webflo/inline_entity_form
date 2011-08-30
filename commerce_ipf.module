@@ -270,36 +270,26 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
  * Refreshes an inline product form widget when one of its submit buttons is clicked.
  */
 function commerce_ipf_widget_refresh($form, $form_state) {
-  $parents = $form_state['triggering_element']['#array_parents'];
-  $action = array_pop($parents);
-  $pop = 0;
+  // Extract the array parents from the triggering element to determine if one
+  // of our submit buttons was clicked and at what depth in the widget's element
+  // array it is.
+  $array_parents = $form_state['triggering_element']['#array_parents'];
+  $action = array_pop($array_parents);
 
-  drupal_set_message('<pre>'. print_r($action, TRUE) .'</pre>');
-  return $form['field_product']['und'];
-
-  switch ($action) {
-    case 'add':
-    case 'reference':
-      $pop = 2;
-      break;
-
-    case 'edit':
-    case 'delete':
-      $pop = 4;
-      break;
-  }
-
-  if ($pop > 0) {
-    for ($i = 0; $i < $pop; $i++) {
-      array_pop($parents);
+  if ($depth = commerce_ipf_widget_form_action_array_depth($action)) {
+    // Pop off the necessary number of parents so the array parents array only
+    // contains the parents leading to the actual product reference field.
+    for ($i = 0; $i < $depth; $i++) {
+      array_pop($array_parents);
     }
 
-    $return = &$form;
-    foreach ($parents as $key) {
-      $return = &$form[$key];
+    // Traverse the form array to find and return just the product reference
+    // field's element array.
+    foreach ($array_parents as $key) {
+      $form = $form[$key];
     }
 
-    return $return[$return['#language']];
+    return $form[$form['#language']];
   }
 }
 
@@ -354,11 +344,32 @@ function commerce_ipf_field_widget_error($element, $error) {
 }
 
 /**
- * Implements hook_views_api().
+ * Returns an array of widget form action info keyed by button name.
  */
-function commerce_ipf_views_api() {
+function commerce_ipf_widget_form_actions() {
   return array(
-    'api' => 3,
-    'path' => drupal_get_path('module', 'commerce_cart') . '/includes/views',
+    'ipf_add' => array('array_depth' => 2),
+    'ipf_reference' => array('array_depth' => 2),
+    'ipf_edit' => array('array_depth' => 4),
+    'ipf_delete' => array('array_depth' => 4),
   );
+}
+
+/**
+ * Returns the array depth of a given action.
+ *
+ * @param $action
+ *   The name of the submit button element on the inline product form widget.
+ *
+ * @return
+ *   The array depth of the given button from the root widget form element.
+ */
+function commerce_ipf_widget_form_action_array_depth($action) {
+  $actions = commerce_ipf_widget_form_actions();
+
+  if (!empty($actions[$action])) {
+    return $actions[$action]['array_depth'];
+  }
+
+  return FALSE;
 }
