@@ -1,4 +1,4 @@
-name = Product Form Widget
+name = Inline Product Form Widget
 description = "Defines a product reference field widget that allows for inline product creation, updating, and deletion on another entity's add / edit form."
 package = Commerce (contrib)
 dependencies[] = commerce_product_reference
