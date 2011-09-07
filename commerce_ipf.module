@@ -68,101 +68,193 @@ function commerce_ipf_field_widget_info() {
  * Implements hook_field_widget_form().
  */
 function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  static $parents_delta = array();
+
   $widget = $instance['widget'];
   $settings = array_merge(field_info_widget_settings($widget['type']), $widget['settings']);
 
-  // Determine the wrapper ID for the entire element.
-  $wrapper = 'commerce-ipf-' . strtr($instance['field_name'], '_', '-');
-  $element['#prefix'] = '<div id="' . $wrapper . '">';
-  $element['#suffix'] = '</div>';
-
-  // Determine if there is an action specified in the form state.
-  $ipf_action = empty($form_state['commerce_ipf_action']) ? NULL : $form_state['commerce_ipf_action'];
-
   if ($widget['type'] == 'commerce_inline_product_form') {
-    // First build an array of referenced product IDs.
-    $product_ids = array();
+    // Build a parents array for this element's values in the form.
+    $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
+    $parents_key = strtr(implode('-', $parents), '_', '-');
 
-    foreach ($items as $item) {
-      $product_ids[] = $item['product_id'];
+    if (!isset($parents_delta[$parents_key])) {
+      $parents_delta[$parents_key] = count($parents_delta);
     }
 
-    // Then load and add the referenced products to the form.
-    $element['products'] = array('#theme' => 'commerce_ipf_product_table');
-    $delta = 0;
+    // Determine the wrapper ID for the entire element.
+    $wrapper = 'commerce-ipf-' . $parents_key;
+    $element['#prefix'] = '<div id="' . $wrapper . '">';
+    $element['#suffix'] = '</div>';
 
-    foreach (commerce_product_load_multiple($product_ids) as $product_id => $product) {
-      $element['products'][$delta]['product'] = array(
+    // Load the products from the $items array and store them in the form state
+    // for further manipulation if this is the first time the widget form is
+    // being built.
+    if (empty($form_state['commerce_ipf'][$parents_key])) {
+      // Initialize the last action and target to NULL.
+      $form_state['commerce_ipf'][$parents_key]['action'] = NULL;
+      $form_state['commerce_ipf'][$parents_key]['target'] = NULL;
+
+      // Add the element's settings to the array.
+      $form_state['commerce_ipf'][$parents_key]['settings'] = $settings;
+
+      // Extract the product IDs from the items array and load the products.
+      $form_state['commerce_ipf'][$parents_key]['products'] = array();
+      $product_ids = array();
+      $delta = 0;
+
+      foreach ($items as $item) {
+        $product_ids[] = $item['product_id'];
+      }
+
+      foreach (commerce_product_load_multiple($product_ids) as $product) {
+        $form_state['commerce_ipf'][$parents_key]['products'][$delta] = array(
+          'data' => $product,
+          'weight' => $delta,
+          'form' => NULL,
+        );
+
+        $delta++;
+      }
+
+      // If no products were found, include a new one on an add form.
+      if (empty($form_state['commerce_ipf'][$parents_key]['products'])) {
+        $form_state['commerce_ipf'][$parents_key]['products'][$delta] = array(
+          'data' => commerce_product_new($settings['default_product_type']),
+          'weight' => 0,
+          'form' => 'add',
+        );
+      }
+    }
+
+    // Loop over all the product data in the form state.
+    $element['products'] = array('#tree' => TRUE, '#theme' => 'commerce_ipf_product_table');
+
+    foreach ($form_state['commerce_ipf'][$parents_key]['products'] as $key => $value) {
+      $element['products'][$key]['#weight'] = $value['weight'];
+
+      $element['products'][$key]['product'] = array(
         '#type' => 'value',
-        '#value' => $product,
+        '#value' => $value['data'],
       );
 
-      $element['products'][$delta]['delta'] = array(
+      $element['products'][$key]['delta'] = array(
         '#type' => 'weight',
         '#delta' => 50,
-        '#default_value' => $delta,
+        '#default_value' => $value['weight'],
         '#attributes' => array('class' => array('commerce-ipf-product-delta')),
       );
 
-      $element['products'][$delta]['title'] = array(
-        '#markup' => check_plain($product->title),
-        '#attributes' => array('class' => array('commerce-ipf-product-title')),
-      );
+      // First check to see if this product should be displayed as a form.
+      if (!empty($value['form'])) {
+        $element['products'][$key]['form'] = array(
+          '#type' => 'container',
+          '#attributes' => array('class' => array('commerce-ipf-product-title')),
+        );
 
-      $element['products'][$delta]['sku'] = array(
-        '#markup' => check_plain($product->sku),
-        '#attributes' => array('class' => array('commerce-ipf-product-sku')),
-      );
+        // Add actions based on the type of the form.
+        $element['products'][$key]['form']['actions'] = array(
+          '#type' => 'container',
+          '#weight' => 100,
+        );
 
-      $element['products'][$delta]['operations'] = array(
-        '#type' => 'container',
-        '#attributes' => array('class' => array('commerce-ipf-product-operations')),
-      );
+        if ($value['form'] == 'add' || $value['form'] == 'edit') {
+          $element['products'][$key]['form']['actions']['ipf_' . $value['form'] . '_save'] = array(
+            '#type' => 'submit',
+            '#value' => t('Save product'),
+            '#name' => 'ipf-' . $parents_delta[$parents_key] . '-' . $value['form'] . '-edit-' . $key,
+            '#limit_validation_errors' => array(),
+            '#submit' => array(),
+            '#ajax' => array(
+              'callback' => 'commerce_ipf_widget_refresh',
+              'wrapper' => $wrapper,
+            ),
+          );
 
-      $element['products'][$delta]['operations']['ipf_edit'] = array(
-        '#type' => 'submit',
-        '#value' => t('edit'),
-        '#ajax' => array(
-          'callback' => 'commerce_ipf_widget_refresh',
-          'wrapper' => $wrapper,
-        ),
-      );
+          $element['products'][$key]['form']['actions']['ipf_' . $value['form'] . '_cancel'] = array(
+            '#type' => 'submit',
+            '#value' => t('Cancel'),
+            '#name' => 'ipf-' . $parents_delta[$parents_key] . '-' . $value['form'] . '-cancel-' . $key,
+            '#limit_validation_errors' => array(),
+            '#submit' => array(),
+            '#ajax' => array(
+              'callback' => 'commerce_ipf_widget_refresh',
+              'wrapper' => $wrapper,
+            ),
+          );
+        }
 
-      $element['products'][$delta]['operations']['ipf_delete'] = array(
-        '#type' => 'submit',
-        '#value' => t('delete'),
-        '#ajax' => array(
-          'callback' => 'commerce_ipf_widget_refresh',
-          'wrapper' => $wrapper,
-        ),
-      );
+        if ($value['form'] == 'delete') {
+          $element['products'][$key]['form']['message'] = array(
+            '#markup' => '<div>' . t('Are you sure you want to delete %title?', array('%title' => $value['data']->title)) . '</div>',
+          );
 
-      $delta++;
-    }
+          $element['products'][$key]['form']['actions']['ipf_delete_confirm'] = array(
+            '#type' => 'submit',
+            '#value' => t('Delete'),
+            '#name' => 'ipf-' . $parents_delta[$parents_key] . '-delete-confirm-' . $key,
+            '#limit_validation_errors' => array(),
+            '#submit' => array(),
+            '#ajax' => array(
+              'callback' => 'commerce_ipf_widget_refresh',
+              'wrapper' => $wrapper,
+            ),
+          );
 
-    // If there are no products or the "Add another product" button was clicked,
-    // include a product type selection / product add form.
-    if (count(element_children($element['products'])) == 0 || $ipf_action == 'ipf_add') {
-      $product = commerce_product_new($settings['default_product_type']);
+          $element['products'][$key]['form']['actions']['ipf_delete_cancel'] = array(
+            '#type' => 'submit',
+            '#value' => t('Cancel'),
+            '#name' => 'ipf-' . $parents_delta[$parents_key] . '-delete-cancel-' . $key,
+            '#limit_validation_errors' => array(),
+            '#submit' => array(),
+            '#ajax' => array(
+              'callback' => 'commerce_ipf_widget_refresh',
+              'wrapper' => $wrapper,
+            ),
+          );
+        }
+      }
+      else {
+        // Otherwise add the product data for the table row.
+        $element['products'][$key]['title'] = array(
+          '#markup' => check_plain($value['data']->title),
+          '#attributes' => array('class' => array('commerce-ipf-product-title')),
+        );
 
-      $element['products'][$delta]['product'] = array(
-        '#type' => 'value',
-        '#value' => $product,
-      );
+        $element['products'][$key]['sku'] = array(
+          '#markup' => check_plain($value['data']->sku),
+          '#attributes' => array('class' => array('commerce-ipf-product-sku')),
+        );
 
-      $element['products'][$delta]['delta'] = array(
-        '#type' => 'weight',
-        '#delta' => 50,
-        '#default_value' => $delta,
-        '#attributes' => array('class' => array('commerce-ipf-product-delta')),
-      );
+        $element['products'][$key]['actions'] = array(
+          '#type' => 'container',
+          '#attributes' => array('class' => array('commerce-ipf-product-operations')),
+        );
 
-      $element['products'][$delta]['form'] = array(
-        '#markup' => 'FORM GOES HERE!!!',
-        '#attributes' => array('class' => array('commerce-ipf-product-title')),
-      );
+        $element['products'][$key]['actions']['ipf_product_edit'] = array(
+          '#type' => 'submit',
+          '#value' => t('Edit'),
+          '#name' => 'ipf-' . $parents_delta[$parents_key] . '-product-edit-' . $key,
+          '#limit_validation_errors' => array(),
+          '#submit' => array(),
+          '#ajax' => array(
+            'callback' => 'commerce_ipf_widget_refresh',
+            'wrapper' => $wrapper,
+          ),
+        );
 
-      $delta++;
+        $element['products'][$key]['actions']['ipf_product_delete'] = array(
+          '#type' => 'submit',
+          '#value' => t('Delete'),
+          '#name' => 'ipf-' . $parents_delta[$parents_key] . '-product-delete-' . $key,
+          '#limit_validation_errors' => array(),
+          '#submit' => array(),
+          '#ajax' => array(
+            'callback' => 'commerce_ipf_widget_refresh',
+            'wrapper' => $wrapper,
+          ),
+        );
+      }
     }
 
     // Add the buttons used to create new products and reference existing products.
@@ -171,84 +263,96 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       '#weight' => 100,
     );
 
-    $element['actions']['ipf_add'] = array(
-      '#type' => 'submit',
-      '#value' => t('Add a new product'),
-      '#ajax' => array(
-        'callback' => 'commerce_ipf_widget_refresh',
-        'wrapper' => $wrapper,
-      ),
-    );
+    if (commerce_ipf_widget_form_action_allow_action($form_state['commerce_ipf'][$parents_key]['action'], 'ipf_add')) {
+      $element['actions']['ipf_add'] = array(
+        '#type' => 'submit',
+        '#value' => t('Add a new product'),
+        '#name' => 'ipf-' . $parents_delta[$parents_key] . '-add',
+        '#limit_validation_errors' => array(),
+        '#submit' => array(),
+        '#ajax' => array(
+          'callback' => 'commerce_ipf_widget_refresh',
+          'wrapper' => $wrapper,
+        ),
+      );
+    }
 
-    $element['actions']['ipf_reference'] = array(
-      '#type' => 'submit',
-      '#value' => t('Reference an existing product'),
-      '#ajax' => array(
-        'callback' => 'commerce_ipf_widget_refresh',
-        'wrapper' => $wrapper,
-      ),
-    );
+    if (commerce_ipf_widget_form_action_allow_action($form_state['commerce_ipf'][$parents_key]['action'], 'ipf_reference')) {
+      $element['actions']['ipf_reference'] = array(
+        '#type' => 'submit',
+        '#value' => t('Reference an existing product'),
+        '#name' => 'ipf-' . $parents_delta[$parents_key] . '-reference',
+        '#limit_validation_errors' => array(),
+        '#submit' => array(),
+        '#ajax' => array(
+          'callback' => 'commerce_ipf_widget_refresh',
+          'wrapper' => $wrapper,
+        ),
+      );
+    }
 
     $element += array(
       '#tree' => TRUE,
       '#element_validate' => array('commerce_ipf_product_form_element_validate'),
     );
 
-    /* module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
+    if (FALSE) {
+      /* module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
 
-    // First attempt to load the currently referenced product if it exists.
-    $product = FALSE;
+      // First attempt to load the currently referenced product if it exists.
+      $product = FALSE;
 
-    if (!empty($items[$delta]['product_id'])) {
-      $product = commerce_product_load($items[$delta]['product_id']);
+      if (!empty($items[$delta]['product_id'])) {
+        $product = commerce_product_load($items[$delta]['product_id']);
+      }
+
+      // If the product existed, fetch its edit form.
+      if ($product) {
+        /*$product_form_state['build_info']['args'] = array($product);
+        $product_form = drupal_retrieve_form('commerce_ipf_product_form', $product_form_state);
+        drupal_prepare_form('commerce_ipf_product_form', $product_form, $product_form_state);
+        drupal_set_message('<pre>' . print_r($product_form, TRUE) .'</pre>');
+        // drupal_set_message('<pre>'. print_r(drupal_get_form('commerce_ipf_product_form', $product), TRUE) .'</pre>');
+
+        //$element += commerce_product_product_form(array(), $form_state, $product);
+        //$element += drupal_get_form('commerce_ipf_product_form', $product);
+
+        // field_attach_form('commerce_product', $product, $element, $form_state);
+        $element+=commerce_product_product_form($form, $form_state, $product);
+
+        $element += array(
+          '#type' => 'fieldset',
+          '#tree' => TRUE,
+          '#element_validate' => array('commerce_ipf_product_form_element_validate'),
+        );
+      }
+      else {
+        // Otherwise let the user create a new product or display an existing one.
+        $element['create_new_product_type'] = array(
+          '#type' => 'select',
+          '#title' => t('Create a new product of the selected type'),
+          '#description' => t('Select a product type and click <em>Continue</em> to load a product form.'),
+          '#options' => commerce_product_type_get_name(),
+          '#empty_value' => '',
+        );
+        $element['reference_existing_product'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Or reference an existing product'),
+          '#description' => t('Specify the existing product to reference by SKU; autocompletes on SKU and product title.'),
+          '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $field['field_name'] . '/' . $instance['bundle'],
+        );
+        $element['continue'] = array(
+          '#type' => 'submit',
+          '#value' => t('Continue'),
+        );
+
+        $element += array(
+          '#type' => 'fieldset',
+          '#title' => '',
+          '#tree' => TRUE,
+        );
+      }*/
     }
-
-    // If the product existed, fetch its edit form.
-    if ($product) {
-      /*$product_form_state['build_info']['args'] = array($product);
-      $product_form = drupal_retrieve_form('commerce_ipf_product_form', $product_form_state);
-      drupal_prepare_form('commerce_ipf_product_form', $product_form, $product_form_state);
-      drupal_set_message('<pre>' . print_r($product_form, TRUE) .'</pre>');
-      // drupal_set_message('<pre>'. print_r(drupal_get_form('commerce_ipf_product_form', $product), TRUE) .'</pre>');
-
-      //$element += commerce_product_product_form(array(), $form_state, $product);
-      //$element += drupal_get_form('commerce_ipf_product_form', $product);
-
-      // field_attach_form('commerce_product', $product, $element, $form_state);
-      $element+=commerce_product_product_form($form, $form_state, $product);
-
-      $element += array(
-        '#type' => 'fieldset',
-        '#tree' => TRUE,
-        '#element_validate' => array('commerce_ipf_product_form_element_validate'),
-      );
-    }
-    else {
-      // Otherwise let the user create a new product or display an existing one.
-      $element['create_new_product_type'] = array(
-        '#type' => 'select',
-        '#title' => t('Create a new product of the selected type'),
-        '#description' => t('Select a product type and click <em>Continue</em> to load a product form.'),
-        '#options' => commerce_product_type_get_name(),
-        '#empty_value' => '',
-      );
-      $element['reference_existing_product'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Or reference an existing product'),
-        '#description' => t('Specify the existing product to reference by SKU; autocompletes on SKU and product title.'),
-        '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $field['field_name'] . '/' . $instance['bundle'],
-      );
-      $element['continue'] = array(
-        '#type' => 'submit',
-        '#value' => t('Continue'),
-      );
-
-      $element += array(
-        '#type' => 'fieldset',
-        '#title' => '',
-        '#tree' => TRUE,
-      );
-    }*/
 
     return $element;
   }
@@ -258,11 +362,117 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
  * Validate callback: validates the element array of an inline product form.
  */
 function commerce_ipf_product_form_element_validate($element, &$form_state, $form) {
-  $element_name = end($form_state['triggering_element']['#array_parents']);
+  // Build a parents array for this element's values in the form.
+  $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
+  $parents_key = strtr(implode('-', $parents), '_', '-');
 
-  if (in_array($element_name, array('ipf_add', 'ipf_reference', 'ipf_edit', 'ipf_delete'))) {
-    $form_state['commerce_ipf_action'] = $element_name;
+  // Loop over the submitted delta values and update the weight of the products
+  // in the form state.
+  foreach (element_children($element['products']) as $key) {
+    $form_state['commerce_ipf'][$parents_key]['products'][$key]['weight'] = $element['products'][$key]['delta']['#value'];
+  }
+
+  // Extract the name of the triggering element from the form state array.
+  $triggering_element_name = end($form_state['triggering_element']['#array_parents']);
+
+  // If it was one of our widget's action buttons...
+  if (in_array($triggering_element_name, array_keys(commerce_ipf_widget_form_actions()))) {
+    // Extract the triggering element's delta value from the array if available.
+    $triggering_element_delta = commerce_ipf_widget_form_action_delta_value($triggering_element_name, $form_state['triggering_element']['#array_parents']);
+
+    // Stash it in the form state and rebuild the form.
+    $form_state['commerce_ipf'][$parents_key]['action'] = $triggering_element_name;
+    $form_state['commerce_ipf'][$parents_key]['target'] = $triggering_element_delta;
     $form_state['rebuild'] = TRUE;
+
+    // If the add a product button was submitted...
+    if ($triggering_element_name == 'ipf_add' || empty($form_state['commerce_ipf'][$parents_key]['products'])) {
+      if (empty($form_state['commerce_ipf'][$parents_key]['products'])) {
+        $weight = 0;
+      }
+      else {
+        $weight = max(array_keys($form_state['commerce_ipf'][$parents_key]['products'])) + 1;
+      }
+
+      // Add a new product to the form state array.
+      $form_state['commerce_ipf'][$parents_key]['products'][] = array(
+        'data' => commerce_product_new($form_state['commerce_ipf'][$parents_key]['settings']['default_product_type']),
+        'weight' => $weight,
+        'form' => 'add',
+      );
+    }
+    elseif ($triggering_element_delta !== FALSE) {
+      // Otherwise if we got a valid triggering element delta value, update the
+      // form state products array based on the selected action.
+      switch ($triggering_element_name) {
+        // Add a new product -> Save: save the product and nullify the form.
+        case 'ipf_add_save':
+          // Get rid of that product's form.
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = NULL;
+          break;
+
+        // Add a new product -> Cancel: remove the product entirely from the array.
+        case 'ipf_add_cancel':
+          unset($form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]);
+          break;
+
+        // Edit: display the product's edit form.
+        case 'ipf_product_edit':
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = 'edit';
+          break;
+
+        // Edit -> Save: save the product and nullify the form.
+        case 'ipf_edit_save':
+          $product_id = $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['data']->product_id;
+
+          if (!empty($product_id)) {
+            $form_state['commerce_ipf'][$parents_key]['save'][$product_id] = $product_id;
+          }
+
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = NULL;
+          break;
+
+        // Edit -> Cancel: nullify the product's edit form.
+        case 'ipf_edit_cancel':
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = NULL;
+          break;
+
+        // Delete: display the product's delete form.
+        case 'ipf_product_delete':
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = 'delete';
+          break;
+
+        // Delete -> Delete: mark the product for deletion.
+        case 'ipf_delete_confirm':
+          $product_id = $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['data']->product_id;
+
+          if (!empty($product_id)) {
+            $form_state['commerce_ipf'][$parents_key]['delete'][$product_id] = $product_id;
+          }
+
+          unset($form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]);
+          break;
+
+        // Delete -> Cancel: nullify the product's delete form.
+        case 'ipf_delete_cancel':
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = NULL;
+          break;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_attach_submit().
+ */
+function commerce_ipf_field_attach_submit($entity_type, $entity, $form, &$form_state) {
+  $bundle_name = field_extract_bundle($entity_type, $entity);
+
+  foreach (field_info_instances($entity_type, $bundle_name) as $instance_name => $instance) {
+    if ($instance['widget']['type'] == 'commerce_inline_product_form') {
+      // Extract field values from submitted values.
+      _field_invoke_default('extract_form_values', $entity_type, $entity, $form, $form_state);
+    }
   }
 }
 
@@ -276,10 +486,10 @@ function commerce_ipf_widget_refresh($form, $form_state) {
   $array_parents = $form_state['triggering_element']['#array_parents'];
   $action = array_pop($array_parents);
 
-  if ($depth = commerce_ipf_widget_form_action_array_depth($action)) {
+  if ($array_depth = commerce_ipf_widget_form_action_array_depth($action)) {
     // Pop off the necessary number of parents so the array parents array only
     // contains the parents leading to the actual product reference field.
-    for ($i = 0; $i < $depth; $i++) {
+    for ($i = 0; $i < $array_depth - 1; $i++) {
       array_pop($array_parents);
     }
 
@@ -300,26 +510,27 @@ function commerce_ipf_widget_refresh($form, $form_state) {
  *   Contains the form element data from $element['products'].
  */
 function theme_commerce_ipf_product_table($variables) {
-  $header = array(t('Title'), t('SKU'), t('Operations'), t('Sort order'));
+  $header = array(t('Product title'), t('SKU'), t('Operations'), t('Sort order'));
 
   // Build an array of product rows for the table.
   $form = $variables['form'];
   $rows = array();
 
   foreach (element_children($form) as $key) {
-    // If the current product array has an ID, add its information to the table.
-    if ($form[$key]['product']['#value']->product_id) {
+    // If the current product array specifies a form, output that in a multi-
+    // column cell in the table.
+    if (!empty($form[$key]['form'])) {
       $row = array(
-        drupal_render($form[$key]['title']),
-        drupal_render($form[$key]['sku']),
-        drupal_render($form[$key]['operations']),
+        array('data' => drupal_render($form[$key]['form']), 'colspan' => 3),
         drupal_render($form[$key]['delta']),
       );
     }
     else {
-      // Otherwise make this row a single cell product form.
+      // Otherwise output all the product data in the table.
       $row = array(
-        array('data' => drupal_render($form[$key]['form']), 'colspan' => 3),
+        drupal_render($form[$key]['title']),
+        drupal_render($form[$key]['sku']),
+        drupal_render($form[$key]['actions']),
         drupal_render($form[$key]['delta']),
       );
     }
@@ -348,10 +559,54 @@ function commerce_ipf_field_widget_error($element, $error) {
  */
 function commerce_ipf_widget_form_actions() {
   return array(
-    'ipf_add' => array('array_depth' => 2),
-    'ipf_reference' => array('array_depth' => 2),
-    'ipf_edit' => array('array_depth' => 4),
-    'ipf_delete' => array('array_depth' => 4),
+    'ipf_add' => array(
+      'array_depth' => 3,
+      'allowed_actions' => array(),
+    ),
+    'ipf_add_save' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
+    'ipf_add_cancel' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
+    'ipf_reference' => array(
+      'array_depth' => 3,
+      'allowed_actions' => array(),
+    ),
+    'ipf_product_edit' => array(
+      'array_depth' => 5,
+      'delta_depth' => 2,
+      'allowed_actions' => array(),
+    ),
+    'ipf_edit_save' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
+    'ipf_edit_cancel' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
+    'ipf_product_delete' => array(
+      'array_depth' => 5,
+      'delta_depth' => 2,
+      'allowed_actions' => array(),
+    ),
+    'ipf_delete_confirm' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
+    'ipf_delete_cancel' => array(
+      'array_depth' => 6,
+      'delta_depth' => 3,
+      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+    ),
   );
 }
 
@@ -372,4 +627,59 @@ function commerce_ipf_widget_form_action_array_depth($action) {
   }
 
   return FALSE;
+}
+
+/**
+ * Returns the delta value for the product a targeted action was performed on.
+ *
+ * @param $action
+ *   The name of the targeted action performed on a product.
+ * @param $array_parents
+ *   The #parents array of the submit button used to perform the action.
+ *
+ * @return
+ *   The delta value in the widget's element array for the targeted product or
+ *   FALSE if it could not be found.
+ */
+function commerce_ipf_widget_form_action_delta_value($action, $array_parents) {
+  $actions = commerce_ipf_widget_form_actions();
+
+  if (!empty($actions[$action]['delta_depth'])) {
+    $delta_depth = $actions[$action]['delta_depth'];
+  }
+  else {
+    return FALSE;
+  }
+
+  for ($i = 0; $i < $delta_depth; $i++) {
+    array_pop($array_parents);
+  }
+
+  return end($array_parents);
+}
+
+/**
+ * Returns a boolean indicating whether a particular action is allowed when the
+ * specified action has been used.
+ *
+ * @param $action
+ *   The name of the submit button element on the inline product form widget.
+ * @param $target_action
+ *   The name of the secondary action you want to check for access to when the
+ *   action has been performed.
+ *
+ * @return
+ *   TRUE or FALSE indicating whether or not the action is allowed.
+ */
+function commerce_ipf_widget_form_action_allow_action($action, $target_action) {
+  // Allow any target action if no action has been performed yet.
+  if (empty($action)) {
+    return TRUE;
+  }
+
+  // Extract the array of allowed follow-up actions from the current action.
+  $actions = commerce_ipf_widget_form_actions();
+  $allowed_actions = !empty($actions[$action]['allowed_actions']) ? $actions[$action]['allowed_actions'] : array();
+
+  return in_array($target_action, $allowed_actions);
 }
