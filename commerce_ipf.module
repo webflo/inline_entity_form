@@ -86,6 +86,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
     $wrapper = 'commerce-ipf-' . $parents_key;
     $element['#prefix'] = '<div id="' . $wrapper . '">';
     $element['#suffix'] = '</div>';
+    $element['#attached']['css'][] = drupal_get_path('module', 'commerce_ipf') . '/theme/commerce_ipf.css';
 
     // Load the products from the $items array and store them in the form state
     // for further manipulation if this is the first time the widget form is
@@ -510,7 +511,13 @@ function commerce_ipf_widget_refresh($form, $form_state) {
  *   Contains the form element data from $element['products'].
  */
 function theme_commerce_ipf_product_table($variables) {
-  $header = array(t('Product title'), t('SKU'), t('Operations'), t('Sort order'));
+  $header = array(
+    array('data' => '', 'class' => array('ipf-tabledrag-header')),
+    array('data' => t('Sort order'), 'class' => array('ipf-sort-order-header')),
+    array('data' => t('Product title'), 'class' => array('ipf-product-header')),
+    t('SKU'),
+    t('Operations'),
+  );
 
   // Build an array of product rows for the table.
   $form = $variables['form'];
@@ -521,17 +528,19 @@ function theme_commerce_ipf_product_table($variables) {
     // column cell in the table.
     if (!empty($form[$key]['form'])) {
       $row = array(
-        array('data' => drupal_render($form[$key]['form']), 'colspan' => 3),
+        array('data' => '', 'class' => array('ipf-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
+        array('data' => drupal_render($form[$key]['form']), 'colspan' => 3),
       );
     }
     else {
       // Otherwise output all the product data in the table.
       $row = array(
+        array('data' => '', 'class' => array('ipf-tabledrag-handle')),
+        drupal_render($form[$key]['delta']),
         drupal_render($form[$key]['title']),
         drupal_render($form[$key]['sku']),
         drupal_render($form[$key]['actions']),
-        drupal_render($form[$key]['delta']),
       );
     }
 

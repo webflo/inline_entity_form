@@ -1,0 +1,21 @@
+
+.ipf-tabledrag-header {
+  border-right: none;
+}
+
+.ipf-sort-order-header {
+  border-left: none;
+}
+
+.ipf-product-header {
+  border-left: none;
+}
+
+.ipf-tabledrag-handle {
+  width: 20px;
+  padding-right: 0;
+}
+
+.ipf-tabledrag-handle a.tabledrag-handle {
+  padding-right: .5em;
+}
