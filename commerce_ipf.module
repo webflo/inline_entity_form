@@ -153,12 +153,26 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           '#attributes' => array('class' => array('commerce-ipf-product-title')),
         );
 
+        // Add the product add / edit form.
+        if ($value['form'] == 'add' || $value['form'] == 'edit') {
+          module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
+          $product_form_state['build_info']['args'] = array($value['data']);
+          $product_form = drupal_retrieve_form('commerce_ipf_product_form', $product_form_state);
+          drupal_prepare_form('commerce_ipf_product_form', $product_form, $product_form_state);
+
+          $element['products'][$key]['form'] += $product_form;
+
+          drupal_set_message('<pre>'. print_r($value, TRUE) .'</pre>');
+          drupal_set_message('<pre>'. print_r($product_form, TRUE) .'</pre>');
+        }
+
         // Add actions based on the type of the form.
         $element['products'][$key]['form']['actions'] = array(
           '#type' => 'container',
           '#weight' => 100,
         );
 
+        // Add save and cancel buttons for product add / edit forms.
         if ($value['form'] == 'add' || $value['form'] == 'edit') {
           $element['products'][$key]['form']['actions']['ipf_' . $value['form'] . '_save'] = array(
             '#type' => 'submit',
@@ -185,6 +199,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           );
         }
 
+        // Add a confirmation message and delete button for delete forms.
         if ($value['form'] == 'delete') {
           $element['products'][$key]['form']['message'] = array(
             '#markup' => '<div>' . t('Are you sure you want to delete %title?', array('%title' => $value['data']->title)) . '</div>',
@@ -227,6 +242,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           '#attributes' => array('class' => array('commerce-ipf-product-sku')),
         );
 
+        // Add an actions container with edit and delete buttons for the product.
         $element['products'][$key]['actions'] = array(
           '#type' => 'container',
           '#attributes' => array('class' => array('commerce-ipf-product-operations')),
@@ -422,14 +438,9 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
           $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = 'edit';
           break;
 
-        // Edit -> Save: save the product and nullify the form.
+        // Edit -> Save: mark the product for saving and nullify the edit form.
         case 'ipf_edit_save':
-          $product_id = $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['data']->product_id;
-
-          if (!empty($product_id)) {
-            $form_state['commerce_ipf'][$parents_key]['save'][$product_id] = $product_id;
-          }
-
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['save'] = TRUE;
           $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['form'] = NULL;
           break;
 
@@ -461,6 +472,10 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
       }
     }
   }
+
+  // After the refresh, include this element's values in a faux value array for
+  // the field to communicate it to hook_field_attach_submit().
+  form_set_value($element, array(array('product_id' => 0, 'commerce_ipf' => $form_state['commerce_ipf'][$parents_key])), $form_state);
 }
 
 /**
@@ -473,6 +488,7 @@ function commerce_ipf_field_attach_submit($entity_type, $entity, $form, &$form_s
     if ($instance['widget']['type'] == 'commerce_inline_product_form') {
       // Extract field values from submitted values.
       _field_invoke_default('extract_form_values', $entity_type, $entity, $form, $form_state);
+      drupal_set_message('<pre>'. print_r($entity, TRUE) .'</pre>');
     }
   }
 }
