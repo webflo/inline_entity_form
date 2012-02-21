@@ -313,64 +313,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       '#element_validate' => array('commerce_ipf_product_form_element_validate'),
     );
 
-    if (FALSE) {
-      /* module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
-
-      // First attempt to load the currently referenced product if it exists.
-      $product = FALSE;
-
-      if (!empty($items[$delta]['product_id'])) {
-        $product = commerce_product_load($items[$delta]['product_id']);
-      }
-
-      // If the product existed, fetch its edit form.
-      if ($product) {
-        /*$product_form_state['build_info']['args'] = array($product);
-        $product_form = drupal_retrieve_form('commerce_ipf_product_form', $product_form_state);
-        drupal_prepare_form('commerce_ipf_product_form', $product_form, $product_form_state);
-        drupal_set_message('<pre>' . print_r($product_form, TRUE) .'</pre>');
-        // drupal_set_message('<pre>'. print_r(drupal_get_form('commerce_ipf_product_form', $product), TRUE) .'</pre>');
-
-        //$element += commerce_product_product_form(array(), $form_state, $product);
-        //$element += drupal_get_form('commerce_ipf_product_form', $product);
-
-        // field_attach_form('commerce_product', $product, $element, $form_state);
-        $element+=commerce_product_product_form($form, $form_state, $product);
-
-        $element += array(
-          '#type' => 'fieldset',
-          '#tree' => TRUE,
-          '#element_validate' => array('commerce_ipf_product_form_element_validate'),
-        );
-      }
-      else {
-        // Otherwise let the user create a new product or display an existing one.
-        $element['create_new_product_type'] = array(
-          '#type' => 'select',
-          '#title' => t('Create a new product of the selected type'),
-          '#description' => t('Select a product type and click <em>Continue</em> to load a product form.'),
-          '#options' => commerce_product_type_get_name(),
-          '#empty_value' => '',
-        );
-        $element['reference_existing_product'] = array(
-          '#type' => 'textfield',
-          '#title' => t('Or reference an existing product'),
-          '#description' => t('Specify the existing product to reference by SKU; autocompletes on SKU and product title.'),
-          '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $field['field_name'] . '/' . $instance['bundle'],
-        );
-        $element['continue'] = array(
-          '#type' => 'submit',
-          '#value' => t('Continue'),
-        );
-
-        $element += array(
-          '#type' => 'fieldset',
-          '#title' => '',
-          '#tree' => TRUE,
-        );
-      }*/
-    }
-
     return $element;
   }
 }
