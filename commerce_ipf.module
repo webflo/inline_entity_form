@@ -19,29 +19,6 @@ function commerce_ipf_theme() {
 }
 
 /**
- * Implements hook_forms().
- */
-function commerce_ipf_forms($form_id, $args) {
-  $forms = array();
-
-  // Define a wrapper ID for the product add / edit form.
-  $forms['commerce_ipf_product_form'] = array(
-    'callback' => 'commerce_product_product_form',
-  );
-
-  return $forms;
-}
-
-/**
- * Implements hook_form_FORM_ID_alter().
- */
-function commerce_ipf_form_commerce_ipf_product_form_alter(&$form, &$form_state) {
-  // Hide the actions section of the inline product form, as it is meant to be
-  // used in the context of another form with its own actions.
-  $form['actions']['#access'] = FALSE;
-}
-
-/**
  * Implements hook_field_widget_info().
  */
 function commerce_ipf_field_widget_info() {
@@ -102,17 +79,17 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       // Extract the product IDs from the items array and load the products.
       $form_state['commerce_ipf'][$parents_key]['products'] = array();
       $product_ids = array();
-      $delta = 0;
-
       foreach ($items as $item) {
         $product_ids[] = $item['product_id'];
       }
 
-      foreach (commerce_product_load_multiple($product_ids) as $product) {
+      $delta = 0;
+      foreach (entity_load('commerce_product', $product_ids) as $product) {
         $form_state['commerce_ipf'][$parents_key]['products'][$delta] = array(
           'data' => $product,
           'weight' => $delta,
           'form' => NULL,
+          'needs_save' => FALSE,
         );
 
         $delta++;
@@ -121,9 +98,10 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       // If no products were found, include a new one on an add form.
       if (empty($form_state['commerce_ipf'][$parents_key]['products'])) {
         $form_state['commerce_ipf'][$parents_key]['products'][$delta] = array(
-          'data' => commerce_product_new($settings['default_product_type']),
+          'data' => entity_create('commerce_product', array('type' => $settings['default_product_type'])),
           'weight' => 0,
           'form' => 'add',
+          'needs_save' => FALSE,
         );
       }
     }
@@ -132,13 +110,10 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
     $element['products'] = array('#tree' => TRUE, '#theme' => 'commerce_ipf_product_table');
 
     foreach ($form_state['commerce_ipf'][$parents_key]['products'] as $key => $value) {
+      $product = $value['data'];
+
+      // Handle row weights.
       $element['products'][$key]['#weight'] = $value['weight'];
-
-      $element['products'][$key]['product'] = array(
-        '#type' => 'value',
-        '#value' => $value['data'],
-      );
-
       $element['products'][$key]['delta'] = array(
         '#type' => 'weight',
         '#delta' => 50,
@@ -152,41 +127,31 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           '#type' => 'container',
           '#attributes' => array('class' => array('commerce-ipf-product-title')),
         );
-
-        // Add the product add / edit form.
-        if ($value['form'] == 'add' || $value['form'] == 'edit') {
-          module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
-          $product_form_state['build_info']['args'] = array($value['data']);
-          $product_form = drupal_retrieve_form('commerce_ipf_product_form', $product_form_state);
-          drupal_prepare_form('commerce_ipf_product_form', $product_form, $product_form_state);
-
-          $element['products'][$key]['form'] += $product_form;
-
-          drupal_set_message('<pre>'. print_r($value, TRUE) .'</pre>');
-          drupal_set_message('<pre>'. print_r($product_form, TRUE) .'</pre>');
-        }
-
-        // Add actions based on the type of the form.
         $element['products'][$key]['form']['actions'] = array(
           '#type' => 'container',
           '#weight' => 100,
         );
+        // Prepare data for the form callbacks and include the parent file.
+        $form = &$element['products'][$key]['form'];
+        $form_parents = array_merge($parents, array('products', $key, 'form'));
+        module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
 
-        // Add save and cancel buttons for product add / edit forms.
+        // Add the product add / edit form.
         if ($value['form'] == 'add' || $value['form'] == 'edit') {
-          $element['products'][$key]['form']['actions']['ipf_' . $value['form'] . '_save'] = array(
+          $form += commerce_ipf_commerce_product_form($form, $form_state, $form_parents, $product);
+
+          $form['actions']['ipf_' . $value['form'] . '_save'] = array(
             '#type' => 'submit',
             '#value' => t('Save product'),
             '#name' => 'ipf-' . $parents_delta[$parents_key] . '-' . $value['form'] . '-edit-' . $key,
-            '#limit_validation_errors' => array(),
+            '#limit_validation_errors' => array($form_parents),
             '#submit' => array(),
             '#ajax' => array(
               'callback' => 'commerce_ipf_widget_refresh',
               'wrapper' => $wrapper,
             ),
           );
-
-          $element['products'][$key]['form']['actions']['ipf_' . $value['form'] . '_cancel'] = array(
+          $form['actions']['ipf_' . $value['form'] . '_cancel'] = array(
             '#type' => 'submit',
             '#value' => t('Cancel'),
             '#name' => 'ipf-' . $parents_delta[$parents_key] . '-' . $value['form'] . '-cancel-' . $key,
@@ -198,14 +163,10 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
             ),
           );
         }
+        elseif ($value['form'] == 'delete') {
+          $form += commerce_ipf_commerce_product_delete_form($form, $form_state, $form_parents, $product);
 
-        // Add a confirmation message and delete button for delete forms.
-        if ($value['form'] == 'delete') {
-          $element['products'][$key]['form']['message'] = array(
-            '#markup' => '<div>' . t('Are you sure you want to delete %title?', array('%title' => $value['data']->title)) . '</div>',
-          );
-
-          $element['products'][$key]['form']['actions']['ipf_delete_confirm'] = array(
+          $form['actions']['ipf_delete_confirm'] = array(
             '#type' => 'submit',
             '#value' => t('Delete'),
             '#name' => 'ipf-' . $parents_delta[$parents_key] . '-delete-confirm-' . $key,
@@ -216,8 +177,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
               'wrapper' => $wrapper,
             ),
           );
-
-          $element['products'][$key]['form']['actions']['ipf_delete_cancel'] = array(
+          $form['actions']['ipf_delete_cancel'] = array(
             '#type' => 'submit',
             '#value' => t('Cancel'),
             '#name' => 'ipf-' . $parents_delta[$parents_key] . '-delete-cancel-' . $key,
@@ -232,23 +192,23 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       }
       else {
         // Otherwise add the product data for the table row.
-        $element['products'][$key]['title'] = array(
-          '#markup' => check_plain($value['data']->title),
+        $row = &$element['products'][$key];
+        $row['title'] = array(
+          '#markup' => check_plain($product->title),
           '#attributes' => array('class' => array('commerce-ipf-product-title')),
         );
 
-        $element['products'][$key]['sku'] = array(
-          '#markup' => check_plain($value['data']->sku),
+        $row['sku'] = array(
+          '#markup' => check_plain($product->sku),
           '#attributes' => array('class' => array('commerce-ipf-product-sku')),
         );
 
         // Add an actions container with edit and delete buttons for the product.
-        $element['products'][$key]['actions'] = array(
+        $row['actions'] = array(
           '#type' => 'container',
           '#attributes' => array('class' => array('commerce-ipf-product-operations')),
         );
-
-        $element['products'][$key]['actions']['ipf_product_edit'] = array(
+        $row['actions']['ipf_product_edit'] = array(
           '#type' => 'submit',
           '#value' => t('Edit'),
           '#name' => 'ipf-' . $parents_delta[$parents_key] . '-product-edit-' . $key,
@@ -259,8 +219,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
             'wrapper' => $wrapper,
           ),
         );
-
-        $element['products'][$key]['actions']['ipf_product_delete'] = array(
+        $row['actions']['ipf_product_delete'] = array(
           '#type' => 'submit',
           '#value' => t('Delete'),
           '#name' => 'ipf-' . $parents_delta[$parents_key] . '-product-delete-' . $key,
@@ -279,7 +238,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       '#type' => 'container',
       '#weight' => 100,
     );
-
     if (commerce_ipf_widget_form_action_allow_action($form_state['commerce_ipf'][$parents_key]['action'], 'ipf_add')) {
       $element['actions']['ipf_add'] = array(
         '#type' => 'submit',
@@ -293,7 +251,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
         ),
       );
     }
-
     if (commerce_ipf_widget_form_action_allow_action($form_state['commerce_ipf'][$parents_key]['action'], 'ipf_reference')) {
       $element['actions']['ipf_reference'] = array(
         '#type' => 'submit',
@@ -321,6 +278,15 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
  * Validate callback: validates the element array of an inline product form.
  */
 function commerce_ipf_product_form_element_validate($element, &$form_state, $form) {
+  // Extract the name of the triggering element from the form state array.
+  $triggering_element_name = end($form_state['triggering_element']['#array_parents']);
+
+  // Abort validation if the form has been rebuilt by an unknown element, such
+  // as a field widget inside the embedded form.
+  if (!empty($form_state['triggering_element']['#ajax']) && !in_array($triggering_element_name, array_keys(commerce_ipf_widget_form_actions()))) {
+    return;
+  }
+
   // Build a parents array for this element's values in the form.
   $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
   $parents_key = strtr(implode('-', $parents), '_', '-');
@@ -330,9 +296,6 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
   foreach (element_children($element['products']) as $key) {
     $form_state['commerce_ipf'][$parents_key]['products'][$key]['weight'] = $element['products'][$key]['delta']['#value'];
   }
-
-  // Extract the name of the triggering element from the form state array.
-  $triggering_element_name = end($form_state['triggering_element']['#array_parents']);
 
   // If it was one of our widget's action buttons...
   if (in_array($triggering_element_name, array_keys(commerce_ipf_widget_form_actions()))) {
@@ -354,13 +317,30 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
       }
 
       // Add a new product to the form state array.
+      $product_type = $form_state['commerce_ipf'][$parents_key]['settings']['default_product_type'];
       $form_state['commerce_ipf'][$parents_key]['products'][] = array(
-        'data' => commerce_product_new($form_state['commerce_ipf'][$parents_key]['settings']['default_product_type']),
+        'data' => entity_create('commerce_product', array('type' => $product_type)),
         'weight' => $weight,
         'form' => 'add',
       );
     }
     elseif ($triggering_element_delta !== FALSE) {
+      // A product form has been submitted, validate it.
+      if ($triggering_element_name == 'ipf_add_save' || $triggering_element_name == 'ipf_edit_save') {
+        module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
+
+        $product = &$form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['data'];
+        $product_form = $element['products'][$triggering_element_delta]['form'];
+        $product_form_parents = array_merge($parents, array('products', $triggering_element_delta, 'form'));
+        commerce_ipf_commerce_product_form_validate($product_form, $form_state, $product_form_parents, $product);
+
+        // No errors found, proceed to submit.
+        if (!form_get_errors()) {
+          commerce_ipf_commerce_product_form_submit($product_form, $form_state, $product_form_parents, $product);
+          $form_state['commerce_ipf'][$parents_key]['products'][$triggering_element_delta]['needs_save'] = TRUE;
+        }
+      }
+
       // Otherwise if we got a valid triggering element delta value, update the
       // form state products array based on the selected action.
       switch ($triggering_element_name) {
@@ -428,9 +408,28 @@ function commerce_ipf_field_attach_submit($entity_type, $entity, $form, &$form_s
 
   foreach (field_info_instances($entity_type, $bundle_name) as $instance_name => $instance) {
     if ($instance['widget']['type'] == 'commerce_inline_product_form') {
-      // Extract field values from submitted values.
-      _field_invoke_default('extract_form_values', $entity_type, $entity, $form, $form_state);
-      drupal_set_message('<pre>'. print_r($entity, TRUE) .'</pre>');
+      $field_name = $instance['field_name'];
+      $field = field_info_field($field_name);
+      $langcode = entity_metadata_field_get_language($entity_type, $entity, $field);
+      $path = array_merge($form['#parents'], array($field_name, $langcode));
+      $values = drupal_array_get_nested_value($form_state['values'], $path, $key_exists);
+      // Delete any products staged for deletion.
+      if (!empty($values[0]['commerce_ipf']['delete'])) {
+        entity_delete_multiple('commerce_product', array_values($values[0]['commerce_ipf']['delete']));
+      }
+
+      // Respect the product weights.
+      uasort($values[0]['commerce_ipf']['products'], 'drupal_sort_weight');
+      // Go through the ipf data and assemble a list of ids.
+      $product_ids = array();
+      foreach ($values[0]['commerce_ipf']['products'] as $product_item) {
+        if ($product_item['needs_save']) {
+          entity_save('commerce_product', $product_item['data']);
+        }
+        $product_ids[] = array('product_id' => entity_id('commerce_product', $product_item['data']));
+      }
+      // Set the list of ids as the field value.
+      $entity->{$field_name}[$langcode] = $product_ids;
     }
   }
 }
