@@ -69,9 +69,8 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
     // for further manipulation if this is the first time the widget form is
     // being built.
     if (empty($form_state['commerce_ipf'][$parents_key])) {
-      // Initialize the last action and target to NULL.
+      // Initialize the last action to NULL.
       $form_state['commerce_ipf'][$parents_key]['action'] = NULL;
-      $form_state['commerce_ipf'][$parents_key]['target'] = NULL;
 
       // Add the element's settings to the array.
       $form_state['commerce_ipf'][$parents_key]['settings'] = $settings;
@@ -233,7 +232,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       }
     }
 
-    // Add the buttons used to create new products and reference existing products.
     $element['actions'] = array(
       '#type' => 'container',
       '#weight' => 100,
@@ -243,19 +241,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
         '#type' => 'submit',
         '#value' => t('Add a new product'),
         '#name' => 'ipf-' . $parents_delta[$parents_key] . '-add',
-        '#limit_validation_errors' => array(),
-        '#submit' => array(),
-        '#ajax' => array(
-          'callback' => 'commerce_ipf_widget_refresh',
-          'wrapper' => $wrapper,
-        ),
-      );
-    }
-    if (commerce_ipf_widget_form_action_allow_action($form_state['commerce_ipf'][$parents_key]['action'], 'ipf_reference')) {
-      $element['actions']['ipf_reference'] = array(
-        '#type' => 'submit',
-        '#value' => t('Reference an existing product'),
-        '#name' => 'ipf-' . $parents_delta[$parents_key] . '-reference',
         '#limit_validation_errors' => array(),
         '#submit' => array(),
         '#ajax' => array(
@@ -302,9 +287,8 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
     // Extract the triggering element's delta value from the array if available.
     $triggering_element_delta = commerce_ipf_widget_form_action_delta_value($triggering_element_name, $form_state['triggering_element']['#array_parents']);
 
-    // Stash it in the form state and rebuild the form.
+    // Stash the triggering element's name in form state and rebuild the form.
     $form_state['commerce_ipf'][$parents_key]['action'] = $triggering_element_name;
-    $form_state['commerce_ipf'][$parents_key]['target'] = $triggering_element_delta;
     $form_state['rebuild'] = TRUE;
 
     // If the add a product button was submitted...
@@ -532,16 +516,12 @@ function commerce_ipf_widget_form_actions() {
     'ipf_add_save' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+      'allowed_actions' => array('ipf_add'),
     ),
     'ipf_add_cancel' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
-    ),
-    'ipf_reference' => array(
-      'array_depth' => 3,
-      'allowed_actions' => array(),
+      'allowed_actions' => array('ipf_add'),
     ),
     'ipf_product_edit' => array(
       'array_depth' => 5,
@@ -551,12 +531,12 @@ function commerce_ipf_widget_form_actions() {
     'ipf_edit_save' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+      'allowed_actions' => array('ipf_add'),
     ),
     'ipf_edit_cancel' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+      'allowed_actions' => array('ipf_add'),
     ),
     'ipf_product_delete' => array(
       'array_depth' => 5,
@@ -566,12 +546,12 @@ function commerce_ipf_widget_form_actions() {
     'ipf_delete_confirm' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+      'allowed_actions' => array('ipf_add'),
     ),
     'ipf_delete_cancel' => array(
       'array_depth' => 6,
       'delta_depth' => 3,
-      'allowed_actions' => array('ipf_add', 'ipf_reference'),
+      'allowed_actions' => array('ipf_add'),
     ),
   );
 }
