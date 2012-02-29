@@ -148,7 +148,18 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       }
     }
 
+    // Include the IPF callbacks.
+    module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
+
     $element['entities'] = array('#tree' => TRUE, '#theme' => 'commerce_ipf_entity_table');
+    // Get all entities from form_state (some of which might not yet exist in
+    // the database), and pass them to the table building callback.
+    $entities = array();
+    foreach ($form_state['commerce_ipf'][$parents_key]['entities'] as $key => $value) {
+      $entities[] = $value['data'];
+    }
+    $entity_table = commerce_ipf_commerce_product_build_table($entities);
+    $element['entities']['#table_header'] = $entity_table['#header'];
 
     foreach ($form_state['commerce_ipf'][$parents_key]['entities'] as $key => $value) {
       $entity = $value['data'];
@@ -172,7 +183,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           '#type' => 'container',
           '#weight' => 100,
         );
-        // Prepare data for the form callbacks and include the parent file.
+        // Prepare data for the form callbacks.
         $form = &$element['entities'][$key]['form'];
         $form_parents = array_merge($parents, array('entities', $key, 'form'));
         module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
@@ -234,15 +245,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       else {
         // Otherwise add the entity data for the table row.
         $row = &$element['entities'][$key];
-        $row['title'] = array(
-          '#markup' => check_plain($entity->title),
-          '#attributes' => array('class' => array('commerce-ipf-product-title')),
-        );
-
-        $row['sku'] = array(
-          '#markup' => check_plain($entity->sku),
-          '#attributes' => array('class' => array('commerce-ipf-product-sku')),
-        );
+        $row['#table_row'] = $entity_table['#rows'][$key];
 
         // Add an actions container with edit and delete buttons for the entity.
         $row['actions'] = array(
@@ -518,16 +521,17 @@ function commerce_ipf_widget_refresh($form, $form_state) {
  *   Contains the form element data from $element['entities'].
  */
 function theme_commerce_ipf_entity_table($variables) {
+  $form = $variables['form'];
+
   $header = array(
     array('data' => '', 'class' => array('ipf-tabledrag-header')),
     array('data' => t('Sort order'), 'class' => array('ipf-sort-order-header')),
-    array('data' => t('Product title'), 'class' => array('ipf-product-header')),
-    t('SKU'),
-    t('Operations'),
   );
+  // Add headers provided by the IPF table callback.
+  $header = array_merge($header, $form['#table_header']);
+  $header[] = t('Operations');
 
   // Build an array of entity rows for the table.
-  $form = $variables['form'];
   $rows = array();
 
   foreach (element_children($form) as $key) {
@@ -545,10 +549,10 @@ function theme_commerce_ipf_entity_table($variables) {
       $row = array(
         array('data' => '', 'class' => array('ipf-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
-        drupal_render($form[$key]['title']),
-        drupal_render($form[$key]['sku']),
-        drupal_render($form[$key]['actions']),
       );
+      // Add cells provided by the IPF table callback.
+      $row = array_merge($row, $form[$key]['#table_row']);
+      $row[] = drupal_render($form[$key]['actions']);
     }
 
     $rows[] = array('data' => $row, 'class' => array('draggable'));
