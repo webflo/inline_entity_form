@@ -2,8 +2,18 @@
 
 /**
  * @file
- * Forms for creating / editing and deleting products from the IPF widget.
+ * CTools plugin. Provides functionality for inline managing commerce products.
  */
+
+$plugin = array(
+  'table' => 'commerce_ipf_commerce_product_build_table',
+  'form' => 'commerce_ipf_commerce_product_form',
+  'form validate' => 'commerce_ipf_commerce_product_form_validate',
+  'form submit' => 'commerce_ipf_commerce_product_form_submit',
+  'delete form' => 'commerce_ipf_commerce_product_delete_form',
+  'add label' => t('Add a new product'),
+  'save label' => t('Save product'),
+);
 
 /**
  * IPF table callback: Returns the table used to identify existing products.

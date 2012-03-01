@@ -6,6 +6,37 @@
  * creation, updating, and deletion on another entity's add / edit form.
  */
 
+/**
+ * Implements hook_ctools_plugin_type().
+ */
+function commerce_ipf_ctools_plugin_type() {
+  return array(
+    'entity_types' => array(),
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function commerce_ipf_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'commerce_ipf') {
+    return 'includes/' . $plugin;
+  }
+}
+
+/**
+ * Returns a specific entity type plugin.
+ *
+ * @param $entity_type
+ *   Entity type.
+ *
+ * @return
+ *   An array with information about the requested entity type plugin.
+ */
+function commerce_ipf_get_entity_type_plugin($entity_type) {
+  ctools_include('plugins');
+  return  ctools_get_plugins('commerce_ipf', 'entity_types', $entity_type);
+}
 
 /**
  * Implements hook_theme().
@@ -85,6 +116,11 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
 
   $widget = $instance['widget'];
   $settings = commerce_ipf_settings($field, $instance);
+  $plugin = commerce_ipf_get_entity_type_plugin($settings['entity_type']);
+  // The current entity type is not supported, execution can't continue.
+  if (!$plugin) {
+    return $element;
+  }
 
   if ($widget['type'] == 'commerce_inline_product_form') {
     // Build a parents array for this element's values in the form.
@@ -148,9 +184,6 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
       }
     }
 
-    // Include the IPF callbacks.
-    module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
-
     $element['entities'] = array('#tree' => TRUE, '#theme' => 'commerce_ipf_entity_table');
     // Get all entities from form_state (some of which might not yet exist in
     // the database), and pass them to the table building callback.
@@ -158,7 +191,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
     foreach ($form_state['commerce_ipf'][$parents_key]['entities'] as $key => $value) {
       $entities[] = $value['data'];
     }
-    $entity_table = commerce_ipf_commerce_product_build_table($entities);
+    $entity_table = $plugin['table']($entities);
     $element['entities']['#table_header'] = $entity_table['#header'];
 
     foreach ($form_state['commerce_ipf'][$parents_key]['entities'] as $key => $value) {
@@ -186,15 +219,14 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
         // Prepare data for the form callbacks.
         $form = &$element['entities'][$key]['form'];
         $form_parents = array_merge($parents, array('entities', $key, 'form'));
-        module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
 
         // Add the entity add / edit form.
         if ($value['form'] == 'add' || $value['form'] == 'edit') {
-          $form += commerce_ipf_commerce_product_form($form, $form_state, $form_parents, $entity);
+          $form += $plugin['form']($form, $form_state, $form_parents, $entity);
 
           $form['actions']['ipf_' . $value['form'] . '_save'] = array(
             '#type' => 'submit',
-            '#value' => t('Save product'),
+            '#value' => $plugin['save label'],
             '#name' => 'ipf-' . $parents_delta[$parents_key] . '-' . $value['form'] . '-edit-' . $key,
             '#limit_validation_errors' => array($form_parents),
             '#submit' => array(),
@@ -216,7 +248,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           );
         }
         elseif ($value['form'] == 'delete') {
-          $form += commerce_ipf_commerce_product_delete_form($form, $form_state, $form_parents, $entity);
+          $form += $plugin['delete form']($form, $form_state, $form_parents, $entity);
 
           $form['actions']['ipf_delete_confirm'] = array(
             '#type' => 'submit',
@@ -307,7 +339,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
 
       $element['actions']['ipf_add'] = array(
         '#type' => 'submit',
-        '#value' => t('Add a new product'),
+        '#value' => $plugin['add label'],
         '#name' => 'ipf-' . $parents_delta[$parents_key] . '-add',
         '#limit_validation_errors' => array(),
         '#submit' => array(),
@@ -390,16 +422,16 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
     elseif ($triggering_element_delta !== FALSE) {
       // An entity form has been submitted, validate it.
       if ($triggering_element_name == 'ipf_add_save' || $triggering_element_name == 'ipf_edit_save') {
-        module_load_include('inc', 'commerce_ipf', 'includes/commerce_product.forms');
+        $plugin = commerce_ipf_get_entity_type_plugin($settings['entity_type']);
 
         $entity = &$form_state['commerce_ipf'][$parents_key]['entities'][$triggering_element_delta]['data'];
         $entity_form = $element['entities'][$triggering_element_delta]['form'];
         $entity_form_parents = array_merge($parents, array('entities', $triggering_element_delta, 'form'));
-        commerce_ipf_commerce_product_form_validate($entity_form, $form_state, $entity_form_parents, $entity);
+        $plugin['form validate']($entity_form, $form_state, $entity_form_parents, $entity);
 
         // No errors found, proceed to submit.
         if (!form_get_errors()) {
-          commerce_ipf_commerce_product_form_submit($entity_form, $form_state, $entity_form_parents, $entity);
+          $plugin['form submit']($entity_form, $form_state, $entity_form_parents, $entity);
         }
       }
 
