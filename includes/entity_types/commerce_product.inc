@@ -11,8 +11,8 @@ $plugin = array(
   'form validate' => 'commerce_ipf_commerce_product_form_validate',
   'form submit' => 'commerce_ipf_commerce_product_form_submit',
   'delete form' => 'commerce_ipf_commerce_product_delete_form',
-  'add label' => t('Add product variation'),
-  'save label' => t('Save variation'),
+  'add label' => t('Add a new product'),
+  'save label' => t('Save product'),
 );
 
 /**
@@ -47,26 +47,6 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
   // Field API relies on #parents when invoked on subforms, using it to find
   // the field values in $form_state.
   $form['#parents'] = $parents;
-  // Some form elements belong in a fieldset for presentation, but can't
-  // be moved into one because of the form_state['values'] hierarchy. Those
-  // elements can add a #fieldset => 'fieldset_name' property, and they'll
-  // be moved to their fieldset during pre_render.
-  $form['#pre_render'][] = 'views_ui_pre_render_add_fieldset_markup';
-  $form['product_attributes'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Product attributes'),
-    '#attributes' => array('class' => array('container-inline', 'ipf-product-attributes')),
-  );
-  $form['product_details'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Product details'),
-    '#attributes' => array('class' => array('ipf-product-details')),
-  );
-  $form['product_image'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Product variation image'),
-    '#attributes' => array('class' => array('ipf-product-image')),
-  );
 
   $language = !empty($product->language) ? $product->language : LANGUAGE_NONE;
   $form['sku'] = array(
@@ -76,38 +56,9 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
     '#default_value' => $product->sku,
     '#maxlength' => 128,
     '#required' => TRUE,
-    '#fieldset' => 'product_details',
+    '#weight' => -10,
   );
   field_attach_form('commerce_product', $product, $form, $form_state, $language);
-
-  // Arrange attributes.
-  $attributes = _commerce_ipf_commerce_product_attributes($product->type);
-  foreach ($attributes as $field_name) {
-    $form[$field_name]['#fieldset'] = 'product_attributes';
-  }
-
-  // Arrange image fields and price fields.
-  $imagefields = array();
-  foreach (field_info_instances('commerce_product', $product->type) as $name => $instance) {
-    $field_name = $instance['field_name'];
-    $field = field_info_field($field_name);
-
-    if ($field['type'] == 'image') {
-      $form[$field_name]['#fieldset'] = 'product_image';
-      $imagefields[] = $field_name;
-    }
-    else {
-      $form[$field_name]['#fieldset'] = 'product_details';
-    }
-  }
-
-  // If there's only one image on the product, no need to show its title, the
-  // fieldset title is enough.
-  if (count($imagefields) == 1) {
-    $field_name = reset($imagefields);
-    $language = $form[$field_name]['#language'];
-    unset($form[$field_name][$language][0]['#title']);
-  }
 
   return $form;
 }
@@ -154,33 +105,4 @@ function commerce_ipf_commerce_product_delete_form($form, $form_state, $parents,
   );
 
   return $form;
-}
-
-/**
- * Returns a list of field names that are used as attributes for the given
- * product type.
- *
- * Copied from commerce_cart.module
- */
-function _commerce_ipf_commerce_product_attributes($type) {
-  $attributes = array();
-  // Loop through all the field instances on that product type.
-  foreach (field_info_instances('commerce_product', $type) as $name => $instance) {
-    // A field qualifies if it is single value, required and uses a widget
-    // with a definite set of options. For the sake of simplicity, this is
-    // currently restricted to fields defined by the options module.
-    $field = field_info_field($instance['field_name']);
-
-    // Get the array of Cart settings pertaining to this instance.
-    $commerce_cart_settings = commerce_cart_field_instance_attribute_settings($instance);
-
-    // If the instance is of a field type that is eligible to function as
-    // a product attribute field and if its attribute field settings
-    // specify that this functionality is enabled...
-    if (commerce_cart_field_attribute_eligible($field) && $commerce_cart_settings['attribute_field']) {
-      $attributes[] = $field['field_name'];
-    }
-  }
-
-  return $attributes;
 }
