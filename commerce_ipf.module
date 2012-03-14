@@ -179,7 +179,7 @@ function commerce_ipf_field_widget_form(&$form, &$form_state, $field, $instance,
           'data' => entity_create($settings['entity_type'], $default_values),
           'weight' => 0,
           'form' => 'add',
-          'needs_save' => FALSE,
+          'needs_save' => TRUE,
         );
       }
     }
@@ -417,6 +417,7 @@ function commerce_ipf_product_form_element_validate($element, &$form_state, $for
         'data' => entity_create($settings['entity_type'], $default_values),
         'weight' => $weight,
         'form' => 'add',
+        'needs_save' => TRUE,
       );
     }
     elseif ($triggering_element_delta !== FALSE) {
