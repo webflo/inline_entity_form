@@ -1,5 +1,0 @@
-name = Inline Product Form
-description = "Defines a product reference field widget that allows for inline product creation, updates, and deletion on another entity's add / edit form."
-package = Commerce (contrib)
-dependencies[] = commerce_product_reference
-core = 7.x

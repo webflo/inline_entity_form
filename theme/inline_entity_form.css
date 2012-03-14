@@ -1,0 +1,29 @@
+
+.ief-tabledrag-header {
+  border-right: none;
+}
+
+.ief-sort-order-header {
+  border-left: none;
+}
+
+.ief-product-header {
+  border-left: none;
+}
+
+.ief-product-attributes .fieldset-wrapper > div {
+  margin-right: 20px;
+}
+
+.ief-product-details .field-type-commerce-price .form-item {
+  margin-right: 15px;
+}
+
+.ief-tabledrag-handle {
+  width: 20px;
+  padding-right: 0;
+}
+
+.ief-tabledrag-handle a.tabledrag-handle {
+  padding-right: .5em;
+}

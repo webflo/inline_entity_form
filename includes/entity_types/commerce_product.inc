@@ -6,30 +6,30 @@
  */
 
 $plugin = array(
-  'table' => 'commerce_ipf_commerce_product_build_table',
-  'form' => 'commerce_ipf_commerce_product_form',
-  'form validate' => 'commerce_ipf_commerce_product_form_validate',
-  'form submit' => 'commerce_ipf_commerce_product_form_submit',
-  'delete form' => 'commerce_ipf_commerce_product_delete_form',
+  'table' => 'inline_entity_form_commerce_product_build_table',
+  'form' => 'inline_entity_form_commerce_product_form',
+  'form validate' => 'inline_entity_form_commerce_product_form_validate',
+  'form submit' => 'inline_entity_form_commerce_product_form_submit',
+  'delete form' => 'inline_entity_form_commerce_product_delete_form',
   'add label' => t('Add product variation'),
   'save label' => t('Save variation'),
 );
 
 /**
- * IPF table callback: Returns the table used to identify existing products.
+ * IEF table callback: Returns the table used to identify existing products.
  * Additional elements (weight, actions) are appended to this table later on.
  */
-function commerce_ipf_commerce_product_build_table($products) {
+function inline_entity_form_commerce_product_build_table($products) {
   $table['#header'] = array(
-    array('data' => t('Product title'), 'class' => array('ipf-product-header')),
+    array('data' => t('Product title'), 'class' => array('ief-product-header')),
     array('data' => t('SKU')),
   );
 
   $table['#rows'] = array();
   foreach ($products as $product) {
     $table['#rows'][] = array(
-      array('data' => check_plain($product->title), 'class' => array('commerce-ipf-product-title')),
-      array('data' => check_plain($product->sku), 'class' => array('commerce-ipf-product-sku')),
+      array('data' => check_plain($product->title), 'class' => array('inline-entity-form-product-title')),
+      array('data' => check_plain($product->sku), 'class' => array('inline-entity-form-product-sku')),
     );
   }
 
@@ -37,13 +37,13 @@ function commerce_ipf_commerce_product_build_table($products) {
 }
 
 /**
- * IPF add/edit form callback: Returns the product form to be embedded.
+ * IEF add/edit form callback: Returns the product form to be embedded.
  *
  * When adding data to $form_state it should be noted that there can be several
- * IPF widgets on one master form, each with several form rows, leading to
+ * IEF widgets on one master form, each with several form rows, leading to
  * possible key collisions if the keys are not prefixed with $parents.
  */
-function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $product) {
+function inline_entity_form_commerce_product_form($form, &$form_state, $parents, $product) {
   // Field API relies on #parents when invoked on subforms, using it to find
   // the field values in $form_state.
   $form['#parents'] = $parents;
@@ -51,21 +51,21 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
   // be moved into one because of the form_state['values'] hierarchy. Those
   // elements can add a #fieldset => 'fieldset_name' property, and they'll
   // be moved to their fieldset during pre_render.
-  $form['#pre_render'][] = 'commerce_ipf_pre_render_add_fieldset_markup';
+  $form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
   $form['product_attributes'] = array(
     '#type' => 'fieldset',
     '#title' => t('Product attributes'),
-    '#attributes' => array('class' => array('container-inline', 'ipf-product-attributes')),
+    '#attributes' => array('class' => array('container-inline', 'ief-product-attributes')),
   );
   $form['product_details'] = array(
     '#type' => 'fieldset',
     '#title' => t('Product details'),
-    '#attributes' => array('class' => array('ipf-product-details')),
+    '#attributes' => array('class' => array('ief-product-details')),
   );
   $form['product_image'] = array(
     '#type' => 'fieldset',
     '#title' => t('Product variation image'),
-    '#attributes' => array('class' => array('ipf-product-image')),
+    '#attributes' => array('class' => array('ief-product-image')),
   );
 
   $language = !empty($product->language) ? $product->language : LANGUAGE_NONE;
@@ -81,7 +81,7 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
   field_attach_form('commerce_product', $product, $form, $form_state, $language);
 
   // Arrange attributes.
-  $attributes = _commerce_ipf_commerce_product_attributes($product->type);
+  $attributes = _inline_entity_form_commerce_product_attributes($product->type);
   if (empty($attributes)) {
     // Hide the fieldset, it will be empty.
     $form['product_attributes']['#access'] = FALSE;
@@ -112,7 +112,7 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
     $form['product_image']['#access'] = FALSE;
   }
   elseif (count($imagefields) == 1) {
-    // There's only one image on the product, no need to show its title, the
+    // here's only one image on the product, no need to show its title, the
     // fieldset title is enough.
     $field_name = reset($imagefields);
     $language = $form[$field_name]['#language'];
@@ -123,9 +123,9 @@ function commerce_ipf_commerce_product_form($form, &$form_state, $parents, $prod
 }
 
 /**
- * IPF add/edit form validation callback.
+ * IEF add/edit form validation callback.
  */
-function commerce_ipf_commerce_product_form_validate($form, &$form_state, $parents, $product) {
+function inline_entity_form_commerce_product_form_validate($form, &$form_state, $parents, $product) {
   $parents_path = implode('][', $parents);
   $product_values = drupal_array_get_nested_value($form_state['values'], $parents);
   $sku = trim($product_values['sku']);
@@ -145,10 +145,10 @@ function commerce_ipf_commerce_product_form_validate($form, &$form_state, $paren
 }
 
 /**
- * IPF add/edit form submit callback: Modifies the passed-in product before it
+ * IEF add/edit form submit callback: Modifies the passed-in product before it
  * is saved.
  */
-function commerce_ipf_commerce_product_form_submit($form, &$form_state, $parents, $product) {
+function inline_entity_form_commerce_product_form_submit($form, &$form_state, $parents, $product) {
   $product_values = drupal_array_get_nested_value($form_state['values'], $parents);
   $product->title = $product_values['sku'];
   $product->sku = $product_values['sku'];
@@ -156,9 +156,9 @@ function commerce_ipf_commerce_product_form_submit($form, &$form_state, $parents
 }
 
 /**
- * IPF delete form callback: Returns the confirmation message.
+ * IEF delete form callback: Returns the confirmation message.
  */
-function commerce_ipf_commerce_product_delete_form($form, $form_state, $parents, $product) {
+function inline_entity_form_commerce_product_delete_form($form, $form_state, $parents, $product) {
   $form['message'] = array(
     '#markup' => '<div>' . t('Are you sure you want to delete %title?', array('%title' => $product->title)) . '</div>',
   );
@@ -172,7 +172,7 @@ function commerce_ipf_commerce_product_delete_form($form, $form_state, $parents,
  *
  * Copied from commerce_cart.module
  */
-function _commerce_ipf_commerce_product_attributes($type) {
+function _inline_entity_form_commerce_product_attributes($type) {
   $attributes = array();
   // Loop through all the field instances on that product type.
   foreach (field_info_instances('commerce_product', $type) as $name => $instance) {
