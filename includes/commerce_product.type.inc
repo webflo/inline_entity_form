@@ -2,18 +2,8 @@
 
 /**
  * @file
- * CTools plugin. Provides functionality for inline managing commerce products.
+ * Provides functionality for inline managing commerce products.
  */
-
-$plugin = array(
-  'table' => 'inline_entity_form_commerce_product_build_table',
-  'form' => 'inline_entity_form_commerce_product_form',
-  'form validate' => 'inline_entity_form_commerce_product_form_validate',
-  'form submit' => 'inline_entity_form_commerce_product_form_submit',
-  'delete form' => 'inline_entity_form_commerce_product_delete_form',
-  'add label' => t('Add product variation'),
-  'save label' => t('Save variation'),
-);
 
 /**
  * IEF table callback: Returns the table used to identify existing products.
@@ -21,7 +11,7 @@ $plugin = array(
  */
 function inline_entity_form_commerce_product_build_table($products) {
   $table['#header'] = array(
-    array('data' => t('Product title'), 'class' => array('ief-product-header')),
+    array('data' => t('Variation title'), 'class' => array('ief-product-header')),
     array('data' => t('SKU')),
   );
 
@@ -43,10 +33,24 @@ function inline_entity_form_commerce_product_build_table($products) {
  * IEF widgets on one master form, each with several form rows, leading to
  * possible key collisions if the keys are not prefixed with $parents.
  */
-function inline_entity_form_commerce_product_form($form, &$form_state, $parents, $product) {
-  // Field API relies on #parents when invoked on subforms, using it to find
-  // the field values in $form_state.
-  $form['#parents'] = $parents;
+function inline_entity_form_commerce_product_form($form, &$form_state) {
+  $product = $form['#entity'];
+
+  // Add the validation callbacks. Note that inline_entity_form_process_submit
+  // is special and needs to always be executed last. It calls the callbacks
+  // defined in #element_submit (Drupal core only defines #element_validate).
+  // #element_submit callbacks modify the entity stored in $form['#entity'] and
+  // after they have been executed the entity is considered ready for saving.
+  $form['#element_validate'] = array(
+    'inline_entity_form_commerce_product_form_validate',
+    'inline_entity_form_process_submit',
+  );
+  $form['#element_submit'] = array(
+    'inline_entity_form_commerce_product_form_submit',
+  );
+  // Ensure this include file is loaded when the form is rebuilt from the cache.
+  $form_state['build_info']['files']['form'] = drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc';
+
   // Some form elements belong in a fieldset for presentation, but can't
   // be moved into one because of the form_state['values'] hierarchy. Those
   // elements can add a #fieldset => 'fieldset_name' property, and they'll
@@ -54,17 +58,17 @@ function inline_entity_form_commerce_product_form($form, &$form_state, $parents,
   $form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
   $form['product_attributes'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Product attributes'),
+    '#title' => t('Attributes'),
     '#attributes' => array('class' => array('container-inline', 'ief-product-attributes')),
   );
   $form['product_details'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Product details'),
+    '#title' => t('Details'),
     '#attributes' => array('class' => array('ief-product-details')),
   );
   $form['product_image'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Product variation image'),
+    '#title' => t('Variation image'),
     '#attributes' => array('class' => array('ief-product-image')),
   );
 
@@ -112,7 +116,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state, $parents,
     $form['product_image']['#access'] = FALSE;
   }
   elseif (count($imagefields) == 1) {
-    // here's only one image on the product, no need to show its title, the
+    // There's only one image on the product, no need to show its title, the
     // fieldset title is enough.
     $field_name = reset($imagefields);
     $language = $form[$field_name]['#language'];
@@ -125,9 +129,11 @@ function inline_entity_form_commerce_product_form($form, &$form_state, $parents,
 /**
  * IEF add/edit form validation callback.
  */
-function inline_entity_form_commerce_product_form_validate($form, &$form_state, $parents, $product) {
-  $parents_path = implode('][', $parents);
-  $product_values = drupal_array_get_nested_value($form_state['values'], $parents);
+function inline_entity_form_commerce_product_form_validate(&$form, &$form_state) {
+  $product = &$form['#entity'];
+
+  $parents_path = implode('][', $form['#parents']);
+  $product_values = drupal_array_get_nested_value($form_state['values'], $form['#parents']);
   $sku = trim($product_values['sku']);
 
   // Ensure the proposed SKU is unique.
@@ -139,26 +145,28 @@ function inline_entity_form_commerce_product_form_validate($form, &$form_state, 
     form_set_error($parents_path . '][sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
   }
   // Trim leading and trailing whitespace from the SKU.
-  drupal_array_set_nested_value($form_state['values'], array_merge($parents, array('sku')), $sku);
+  drupal_array_set_nested_value($form_state['values'], array_merge($form['#parents'], array('sku')), $sku);
 
   field_attach_form_validate('commerce_product', $product, $form, $form_state);
 }
 
 /**
- * IEF add/edit form submit callback: Modifies the passed-in product before it
- * is saved.
+ * IEF add/edit form submit callback.
  */
-function inline_entity_form_commerce_product_form_submit($form, &$form_state, $parents, $product) {
-  $product_values = drupal_array_get_nested_value($form_state['values'], $parents);
+function inline_entity_form_commerce_product_form_submit(&$form, &$form_state) {
+  $product_values = drupal_array_get_nested_value($form_state['values'], $form['#parents']);
+  $product = &$form['#entity'];
   $product->title = $product_values['sku'];
   $product->sku = $product_values['sku'];
+
   field_attach_submit('commerce_product', $product, $form, $form_state);
 }
 
 /**
  * IEF delete form callback: Returns the confirmation message.
  */
-function inline_entity_form_commerce_product_delete_form($form, $form_state, $parents, $product) {
+function inline_entity_form_commerce_product_delete_form($form, $form_state) {
+  $product = $form['#entity'];
   $form['message'] = array(
     '#markup' => '<div>' . t('Are you sure you want to delete %title?', array('%title' => $product->title)) . '</div>',
   );

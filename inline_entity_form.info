@@ -1,6 +1,5 @@
 name = Inline Entity Form
 description = "Provides a widget for inline management (creation, modification, removal) of referenced entities. "
 package = Fields
-dependencies[] = ctools
 dependencies[] = entity
 core = 7.x
