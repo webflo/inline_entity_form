@@ -423,7 +423,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       }
       $entity = entity_create($settings['entity_type'], $default_values);
 
-      $element['form'] = array(
+      $element['add_form'] = array(
         '#type' => 'fieldset',
         '#title' => $type_info['labels']['add fieldset'],
         // Used by Field API, #element_validate and #element_submit to find
@@ -433,16 +433,16 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#entity' => $entity,
         '#entity_type' => $settings['entity_type'],
       );
-      $element['form']['actions'] = array(
+      $element['add_form']['actions'] = array(
         '#type' => 'container',
         '#weight' => 100,
       );
-      $element['form'] += $type_info['callbacks']['form']($element['form'], $form_state);
-      $element['form']['actions']['ief_add_save'] = array(
+      $element['add_form'] += $type_info['callbacks']['form']($element['add_form'], $form_state);
+      $element['add_form']['actions']['ief_add_save'] = array(
         '#type' => 'submit',
         '#value' => $type_info['labels']['save button'],
         '#name' => 'ief-' . $parents_delta[$parents_key] . '-add-submit',
-        '#limit_validation_errors' => array($element['form']['#parents']),
+        '#limit_validation_errors' => array($element['add_form']['#parents']),
         '#submit' => array(),
         '#ajax' => array(
           'callback' => 'inline_entity_form_widget_refresh',
@@ -451,7 +451,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       );
       // Make sure the Cancel button is not shown when there are no entities.
       if (!empty($form_state['inline_entity_form'][$parents_key]['entities'])) {
-        $element['form']['actions']['ief_add_cancel'] = array(
+        $element['add_form']['actions']['ief_add_cancel'] = array(
           '#type' => 'submit',
           '#value' => t('Cancel'),
           '#name' => 'ief-' . $parents_delta[$parents_key] . '-add-cancel',
@@ -479,15 +479,51 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
  * after they have been executed the entity is considered ready for saving.
  *
  * @param $entity_form
- *  The form of the entity being managed inline, provided by the plugin.
+ *  The form of the entity being managed inline.
  * @param $form_state
  *   The form state of the complete IEF widget.
  */
 function inline_entity_form_process_submit(&$entity_form, &$form_state) {
+  // Abort submission if the form has been rebuilt by an unknown element, such
+  // as a field widget.
+  $triggering_element_name = end($form_state['triggering_element']['#array_parents']);
+  if (!in_array($triggering_element_name, array('ief_add_save', 'ief_edit_save'))) {
+    return;
+  }
+
   if (!form_get_errors()) {
     foreach ($entity_form['#element_submit'] as $function) {
       $function($entity_form, $form_state);
     }
+  }
+}
+
+/**
+ * Cleans up the form state for each field.
+ *
+ * After field_attach_submit() has run and the entity has been saved, the form
+ * state still contains field data in $form_state['field']. Unless that
+ * data is removed, the next form with the same #parents (reopened add form,
+ * for example) will contain data (i.e. uploaded files) from the previous form.
+ *
+ * @param $entity_form
+ *   The form of the entity being managed inline.
+ * @param $form_state
+ *   The form state of the complete IEF widget.
+ */
+function inline_entity_form_cleanup_field_form_state($entity_form, &$form_state) {
+  list(, , $bundle) = entity_extract_ids($entity_form['#entity_type'], $entity_form['#entity']);
+  $instances = field_info_instances($entity_form['#entity_type'], $bundle);
+  foreach ($instances as $instance) {
+    $field_name = $instance['field_name'];
+    $parents = $entity_form[$field_name]['#parents'];
+    array_pop($parents);
+    $langcode = $entity_form[$field_name]['#language'];
+
+    $field_state = field_form_get_state($parents, $field_name, $langcode, $form_state);
+    unset($field_state['items']);
+    $field_state['items_count'] = 0;
+    field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
   }
 }
 
@@ -500,7 +536,7 @@ function inline_entity_form_element_validate($element, &$form_state, $form) {
 
   // Abort validation if the form has been rebuilt by an unknown element, such
   // as a field widget inside the embedded form.
-  if (!empty($form_state['triggering_element']['#ajax']) && !in_array($triggering_element_name, array_keys(inline_entity_form_widget_form_actions()))) {
+  if (!in_array($triggering_element_name, array_keys(inline_entity_form_widget_form_actions()))) {
     return;
   }
 
@@ -515,92 +551,85 @@ function inline_entity_form_element_validate($element, &$form_state, $form) {
     $form_state['inline_entity_form'][$parents_key]['entities'][$key]['weight'] = $element['entities'][$key]['delta']['#value'];
   }
 
-  // If it was one of our widget's action buttons...
-  if (in_array($triggering_element_name, array_keys(inline_entity_form_widget_form_actions()))) {
-    $form_state['inline_entity_form'][$parents_key]['action'] = $triggering_element_name;
-    $form_state['rebuild'] = TRUE;
+  $form_state['inline_entity_form'][$parents_key]['action'] = $triggering_element_name;
+  $form_state['rebuild'] = TRUE;
 
-    // Get the current form values.
-    $form_values = drupal_array_get_nested_value($form_state['values'], $parents);
+  // Get the current form values.
+  $form_values = drupal_array_get_nested_value($form_state['values'], $parents);
 
-    // Extract the triggering element's delta value from the array if available.
-    // This value is only available for clicked buttons from the "Operations"
-    // column (edit, delete), and contains the delta of the entry in
-    // $form_state['inline_entity_form'][$parents_key]['entities'].
-    $triggering_element_delta = inline_entity_form_widget_form_action_delta_value($triggering_element_name, $form_state['triggering_element']['#array_parents']);
+  // Extract the triggering element's delta value from the array if available.
+  // This value is only available for clicked buttons from the "Operations"
+  // column (edit, delete), and contains the delta of the entry in
+  // $form_state['inline_entity_form'][$parents_key]['entities'].
+  $triggering_element_delta = inline_entity_form_widget_form_action_delta_value($triggering_element_name, $form_state['triggering_element']['#array_parents']);
 
-    switch ($triggering_element_name) {
-      case 'ief_add':
-        $form_state['inline_entity_form'][$parents_key]['add_form'] = array(
-          'bundle' => $form_values['actions']['bundle'],
-        );
-        break;
+  switch ($triggering_element_name) {
+    case 'ief_add':
+      $form_state['inline_entity_form'][$parents_key]['add_form'] = array(
+        'bundle' => $form_values['actions']['bundle'],
+      );
+      break;
 
-      case 'ief_add_save':
-        // Determine the correct weight of the new element.
-        $weight = 0;
-        if (!empty($form_state['inline_entity_form'][$parents_key]['entities'])) {
-          $weight = max(array_keys($form_state['inline_entity_form'][$parents_key]['entities'])) + 1;
-        }
-        // The #element_submit callbacks of the entity form have by now
-        // prepared the entity stored in $entity_form['#entity'] for saving.
-        // Add it to form state, mark it for saving, and close the form.
-        $entity_form = $element['form'];
-        $form_state['inline_entity_form'][$parents_key]['entities'][] = array(
-          'data' => $entity_form['#entity'],
-          'weight' => $weight,
-          'form' => NULL,
-          'needs_save' => TRUE,
-        );
+    case 'ief_add_save':
+      // Determine the correct weight of the new element.
+      $weight = 0;
+      if (!empty($form_state['inline_entity_form'][$parents_key]['entities'])) {
+        $weight = max(array_keys($form_state['inline_entity_form'][$parents_key]['entities'])) + 1;
+      }
+      // The #element_submit callbacks of the entity form have by now
+      // prepared the entity stored in $entity_form['#entity'] for saving.
+      // Add it to form state, mark it for saving, and close the form.
+      $entity_form = $element['add_form'];
+      $form_state['inline_entity_form'][$parents_key]['entities'][] = array(
+        'data' => $entity_form['#entity'],
+        'weight' => $weight,
+        'form' => NULL,
+        'needs_save' => TRUE,
+      );
 
-        $form_state['inline_entity_form'][$parents_key]['add_form'] = NULL;
-        break;
+      $form_state['inline_entity_form'][$parents_key]['add_form'] = NULL;
+      break;
 
-      case 'ief_add_cancel':
-        $form_state['inline_entity_form'][$parents_key]['add_form'] = NULL;
-        break;
+    case 'ief_add_cancel':
+      $form_state['inline_entity_form'][$parents_key]['add_form'] = NULL;
+      break;
 
-      case 'ief_entity_edit':
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = 'edit';
-        break;
+    case 'ief_entity_edit':
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = 'edit';
+      break;
 
-      case 'ief_edit_save':
-        // The #element_submit callbacks of the entity form have by now
-        // prepared the entity stored in $entity_form['#entity'] for saving.
-        // Replace the entity in form state with that one one, mark it
-        // for saving, and close the form.
-        $entity_form = $element['entities'][$triggering_element_delta]['form'];
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['data'] = $entity_form['#entity'];
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['needs_save'] = TRUE;
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
-        break;
+    case 'ief_edit_save':
+      // The #element_submit callbacks of the entity form have by now
+      // prepared the entity stored in $entity_form['#entity'] for saving.
+      // Replace the entity in form state with that one one, mark it
+      // for saving, and close the form.
+      $entity_form = $element['entities'][$triggering_element_delta]['form'];
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['data'] = $entity_form['#entity'];
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['needs_save'] = TRUE;
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
+      break;
 
-      case 'ief_edit_cancel':
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
-        break;
+    case 'ief_edit_cancel':
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
+      break;
 
-      case 'ief_entity_delete':
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = 'delete';
-        break;
+    case 'ief_entity_delete':
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = 'delete';
+      break;
 
-      case 'ief_delete_confirm':
-        $entity_id = entity_id($settings['entity_type'], $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['data']);
-        if (!empty($entity_id)) {
-          $form_state['inline_entity_form'][$parents_key]['delete'][] = $entity_id;
-        }
+    case 'ief_delete_confirm':
+      $entity_id = entity_id($settings['entity_type'], $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['data']);
+      if (!empty($entity_id)) {
+        $form_state['inline_entity_form'][$parents_key]['delete'][] = $entity_id;
+      }
 
-        unset($form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]);
-        break;
+      unset($form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]);
+      break;
 
-      case 'ief_delete_cancel':
-        $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
-        break;
-    }
+    case 'ief_delete_cancel':
+      $form_state['inline_entity_form'][$parents_key]['entities'][$triggering_element_delta]['form'] = NULL;
+      break;
   }
-
-  // After the refresh, include this element's values in a faux value array for
-  // the field to communicate it to hook_field_attach_submit().
-  form_set_value($element, array(array($settings['column'] => 0, 'inline_entity_form' => $form_state['inline_entity_form'][$parents_key])), $form_state);
 }
 
 /**
@@ -614,19 +643,20 @@ function inline_entity_form_field_attach_submit($entity_type, $entity, $form, &$
       $field_name = $instance['field_name'];
       $field = field_info_field($field_name);
       $langcode = entity_metadata_field_get_language($entity_type, $entity, $field);
-      $path = array_merge($form['#parents'], array($field_name, $langcode));
-      $values = drupal_array_get_nested_value($form_state['values'], $path, $key_exists);
-      $settings = $values[0]['inline_entity_form']['settings'];
+      $parents = array_merge($form['#parents'], array($field_name, $langcode));
+      $parents_key = strtr(implode('-', $parents), '_', '-');
+      $values = $form_state['inline_entity_form'][$parents_key];
+      $settings = $values['settings'];
       // Delete any entities staged for deletion.
-      if (!empty($values[0]['inline_entity_form']['delete'])) {
-        entity_delete_multiple($settings['entity_type'], array_values($values[0]['inline_entity_form']['delete']));
+      if (!empty($values['delete'])) {
+        entity_delete_multiple($settings['entity_type'], array_values($values['delete']));
       }
 
       // Respect the entity weights.
-      uasort($values[0]['inline_entity_form']['entities'], 'drupal_sort_weight');
+      uasort($values['entities'], 'drupal_sort_weight');
       // Go through the ief data and assemble a list of ids.
       $entity_ids = array();
-      foreach ($values[0]['inline_entity_form']['entities'] as $item) {
+      foreach ($values['entities'] as $item) {
         if ($item['needs_save']) {
           entity_save($settings['entity_type'], $item['data']);
         }

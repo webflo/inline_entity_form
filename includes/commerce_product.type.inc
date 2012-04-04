@@ -160,6 +160,7 @@ function inline_entity_form_commerce_product_form_submit(&$form, &$form_state) {
   $product->sku = $product_values['sku'];
 
   field_attach_submit('commerce_product', $product, $form, $form_state);
+  inline_entity_form_cleanup_field_form_state($form, $form_state);
 }
 
 /**
