@@ -101,7 +101,7 @@ function inline_entity_form_field_widget_info() {
 
   $widgets['inline_entity_form'] = array(
     'label' => t('Inline entity form'),
-    'field types' => array('commerce_product_reference'),
+    'field types' => array('commerce_product_reference', 'entityreference'),
     'settings' => array(),
     'behaviors' => array(
       'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -136,6 +136,17 @@ function inline_entity_form_settings($field, $instance) {
     $types = array_filter($instance['settings']['referenceable_types']);
     if (!empty($types)) {
       $settings['bundles'] = array_values($types);
+    }
+  }
+  elseif ($field['type'] == 'entityreference') {
+    $settings['entity_type'] = $field['settings']['target_type'];
+    $settings['column'] = 'target_id';
+
+    if (!empty($field['settings']['handler_settings']['target_bundles'])) {
+      $bundles = array_filter($field['settings']['handler_settings']['target_bundles']);
+      if (!empty($bundles)) {
+        $settings['bundles'] = array_values($bundles);
+      }
     }
   }
 
