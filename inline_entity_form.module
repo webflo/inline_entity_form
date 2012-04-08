@@ -16,7 +16,7 @@ function inline_entity_form_inline_entity_type_info() {
   $types['commerce_product'] = array(
     'file' => drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc',
     'callbacks' => array(
-      'table' => 'inline_entity_form_commerce_product_build_table',
+      'default fields' => 'inline_entity_form_commerce_product_default_fields',
       'form' => 'inline_entity_form_commerce_product_form',
       'delete form' => 'inline_entity_form_commerce_product_delete_form',
     ),
@@ -102,7 +102,7 @@ function inline_entity_form_field_widget_info() {
   $widgets['inline_entity_form'] = array(
     'label' => t('Inline entity form'),
     'field types' => array('commerce_product_reference', 'entityreference'),
-    'settings' => array(),
+    'settings' => array('fields' => array()),
     'behaviors' => array(
       'multiple values' => FIELD_BEHAVIOR_CUSTOM,
       'default value' => FIELD_BEHAVIOR_NONE,
@@ -249,15 +249,20 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       }
     }
 
-    $element['entities'] = array('#tree' => TRUE, '#theme' => 'inline_entity_form_entity_table');
-    // Get all entities from form_state (some of which might not yet exist in
-    // the database), and pass them to the table building callback.
-    $entities = array();
-    foreach ($form_state['inline_entity_form'][$parents_key]['entities'] as $key => $value) {
-      $entities[] = $value['data'];
+    $element['entities'] = array(
+      '#tree' => TRUE,
+      '#theme' => 'inline_entity_form_entity_table',
+      '#entity_type' => $settings['entity_type'],
+    );
+    // Get the fields that should be displayed in the table.
+    // They can either come from the widget settings or from a "default fields"
+    // callback.
+    if (!empty($widget['settings']['fields'])) {
+      $element['entities']['#fields'] = $widget['settings']['fields'];
     }
-    $entity_table = $type_info['callbacks']['table']($entities);
-    $element['entities']['#table_header'] = $entity_table['#header'];
+    else {
+      $element['entities']['#fields'] = $type_info['callbacks']['default fields']($settings['bundles']);
+    }
 
     foreach ($form_state['inline_entity_form'][$parents_key]['entities'] as $key => $value) {
       $entity = $value['data'];
@@ -345,9 +350,9 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         }
       }
       else {
-        // Otherwise add the entity data for the table row.
         $row = &$element['entities'][$key];
-        $row['#table_row'] = $entity_table['#rows'][$key];
+        // Store the entity so that the theme function can access it.
+        $row['#entity'] = $entity;
 
         // Add an actions container with edit and delete buttons for the entity.
         $row['actions'] = array(
@@ -714,18 +719,35 @@ function inline_entity_form_widget_refresh($form, $form_state) {
  */
 function theme_inline_entity_form_entity_table($variables) {
   $form = $variables['form'];
+  $entity_type = $form['#entity_type'];
+  $fields = $form['#fields'];
+  // Sort the fields by weight and remove the ones that won't be displayed.
+  uasort($fields, 'drupal_sort_weight');
+  foreach ($fields as $field_name => $field) {
+    if (empty($field['visible'])) {
+      unset($fields[$field_name]);
+    }
+  }
 
   $header = array(
     array('data' => '', 'class' => array('ief-tabledrag-header')),
     array('data' => t('Sort order'), 'class' => array('ief-sort-order-header')),
   );
-  // Add headers provided by the IEF table callback.
-  $header = array_merge($header, $form['#table_header']);
+  // Add header columns for each field.
+  $first = TRUE;
+  foreach ($fields as $field_name => $field) {
+    $column = array('data' => $field['label']);
+    // The first column gets a special class.
+    if ($first) {
+      $column['class'] = array('ief-first-column-header');
+      $first = FALSE;
+    }
+    $header[] = $column;
+  }
   $header[] = t('Operations');
 
   // Build an array of entity rows for the table.
   $rows = array();
-
   foreach (element_children($form) as $key) {
     // If the current entity array specifies a form, output that in a multi-
     // column cell in the table.
@@ -733,17 +755,34 @@ function theme_inline_entity_form_entity_table($variables) {
       $row = array(
         array('data' => '', 'class' => array('ief-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
-        array('data' => drupal_render($form[$key]['form']), 'colspan' => 3),
+        array('data' => drupal_render($form[$key]['form']), 'colspan' => count($fields) + 1),
       );
     }
     else {
+      $entity = $form[$key]['#entity'];
       // Otherwise output all the entity data in the table.
       $row = array(
         array('data' => '', 'class' => array('ief-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
       );
-      // Add cells provided by the IEF table callback.
-      $row = array_merge($row, $form[$key]['#table_row']);
+      // Add fields that represent the entity..
+      foreach ($fields as $field_name => $field) {
+        if ($field['type'] == 'extra_field') {
+          $data = check_plain($entity->{$field_name});
+        }
+        elseif ($field['type'] == 'field') {
+          $settings = array(
+            'label' => 'hidden',
+            'type' => $field['formatter'],
+            'settings' => $field['settings']
+          );
+          $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
+          $data = drupal_render($renderable_data);
+        }
+
+        $row[] = array('data' => $data, 'class' => array('inline-entity-form-' . $entity_type . '-' . $field_name));
+      }
+      // Add the buttons belonging to the "Operations" column.
       $row[] = drupal_render($form[$key]['actions']);
     }
 

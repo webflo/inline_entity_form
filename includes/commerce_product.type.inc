@@ -6,6 +6,72 @@
  */
 
 /**
+ * IEF default fields callback: Returns an array of fields (which can be either
+ * Field API fields or properties provided through hook_field_extra_fields())
+ * that should be used to represent a selected product.
+ *
+ * The IEF widget can have its own fields specified in the widget settings, in
+ * which case the output of this function is ingored.
+ *
+ * @param $types
+ *   An array of allowed product types for this widget.
+ *
+ * @return
+ *   An array of field information, keyed by field name. Allowed keys:
+ *   - type: 'field' or 'extra_field',
+ *   - label: Human readable name of the field, shown to the user.
+ *   - weight: The position of the field relative to other fields.
+ *   - visible: Whether the field should be displayed.
+ *   Special keys for type 'field':
+ *   - formatter: The formatter used to display the field, or "hidden".
+ *   - settings: An array passed to the formatter. If empty, defaults are used.
+ */
+function inline_entity_form_commerce_product_default_fields($types) {
+  $fields = array();
+
+  $fields['title'] = array(
+    'type' => 'extra_field',
+    'label' => t('Variation title'),
+    'visible' => TRUE,
+    'weight' => 1,
+  );
+  $fields['sku'] = array(
+    'type' => 'extra_field',
+    'label' => 'SKU',
+    'visible' => TRUE,
+    'weight' => 2,
+  );
+
+  // If there's only one product type allowed, and there's up to 3 attributes,
+  // show them instead of the title field.
+  if (count($types) == 1) {
+    $type = reset($types);
+    $attributes = _inline_entity_form_commerce_product_attributes($type);
+    if (count($attributes) <= 3) {
+      $fields['title']['visible'] = FALSE;
+
+      foreach ($attributes as $attribute) {
+        $field = field_info_field($attribute);
+        $instance = field_info_instance('commerce_product', $attribute, $type);
+        $field_type = field_info_field_types($field['type']);
+
+        $weight = -3;
+        $fields[$attribute] = array(
+          'type' => 'field',
+          'label' => $instance['label'],
+          'formatter' => $field_type['default_formatter'],
+          'settings' => array(),
+          'visible' => TRUE,
+          'weight' => ++$weight,
+        );
+      }
+    }
+  }
+
+  return $fields;
+}
+
+/**
  * IEF table callback: Returns the table used to identify existing products.
  * Additional elements (weight, actions) are appended to this table later on.
  */

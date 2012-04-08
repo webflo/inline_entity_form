@@ -13,7 +13,8 @@
  *   for this type.
  * - callbacks: an array of callback function names used by the widget for
  *   various operations on the referenced entities (list, add, edit, delete).
- *   - table: Provides a table display of passed-in entities.
+ *   - default fields: Provides a default list of fields that should be used to
+ *   represent each selected entity.
  *   - form: Provides an add / edit form.
  *   - delete form: Provides a confirmation delete form.
  * - labels: an array of labels shown in the widget for this entity type.
