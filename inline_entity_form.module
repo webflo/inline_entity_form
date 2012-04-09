@@ -689,7 +689,7 @@ function inline_entity_form_field_attach_submit($entity_type, $entity, $form, &$
     if (isset($instance['widget']) && $instance['widget']['type'] == 'inline_entity_form') {
       $field_name = $instance['field_name'];
       $field = field_info_field($field_name);
-      $langcode = entity_metadata_field_get_language($entity_type, $entity, $field);
+      $langcode = $form[$field_name]['#language'];
       $parents = array_merge($form['#parents'], array($field_name, $langcode));
       $parents_key = strtr(implode('-', $parents), '_', '-');
       $values = $form_state['inline_entity_form'][$parents_key];
