@@ -1,0 +1,21 @@
+
+.ief-row-form {
+  background-color: white !important;
+  border-top: 1px solid #ccc !important;
+  border-bottom: 1px solid #ccc !important;
+}
+
+.ief-entity-fieldset {
+  border: 0 !important;
+}
+
+.ief-entity-fieldset .fieldset-legend {
+  width: 99%;
+  background-color: #E7E7E7;
+  height: 25px;
+  padding: 5px 0 3px 15px;
+}
+
+.ief-entity-fieldset .fieldset-wrapper {
+  margin-top: 15px;
+}

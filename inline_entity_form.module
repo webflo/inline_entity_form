@@ -26,6 +26,9 @@ function inline_entity_form_inline_entity_type_info() {
       'save button' => t('Save variation'),
     ),
     'empty text' => t('No product variations have been created. At least one variation is required.'),
+    'css' => array(
+      'base' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.css',
+    ),
   );
 
   return $types;
@@ -50,6 +53,7 @@ function inline_entity_form_types() {
           // Provide defaults.
           'callbacks' => array(),
           'labels' => array(),
+          'css' => array(),
           'empty text' => '',
         );
         $types[$entity_type] = $info;
@@ -80,6 +84,28 @@ function inline_entity_form_type($entity_type) {
   }
 
   return $types[$entity_type];
+}
+
+/**
+ * Attaches theme specific CSS files.
+ *
+ * @param $theme_css
+ *  An array of all CSS files that should be considered.
+ * @param $css
+ *   The $form['#attached']['css'] array, modified by reference.
+ */
+function _inline_entity_form_attach_css($theme_css, &$css) {
+  // Add the base CSS file, if provided.
+  if (!empty($theme_css['base'])) {
+    $css[] = $theme_css['base'];
+  }
+
+  // Add the theme specific CSS file, if provided.
+  $themes = list_themes();
+  $theme_key = $GLOBALS['theme'];
+  if (!empty($theme_css[$theme_key])) {
+    $css[] = $theme_css[$theme_key];
+  }
 }
 
 /**
@@ -197,12 +223,17 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       '#description' => NULL,
       '#prefix' => '<div id="' . $wrapper . '">',
       '#suffix' => '</div>',
-      '#attached' => array(
-        'css' => array(
-          drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.css',
-        ),
-      ),
+      '#attached' => array('css' => array()),
     ) + $element;
+
+    $base_css = array(
+      'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.css',
+      'seven' => drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.seven.css',
+    );
+    // Add the base module CSS.
+    _inline_entity_form_attach_css($base_css, $element['#attached']['css']);
+    // Add entity type specific CSS.
+    _inline_entity_form_attach_css($type_info['css'], $element['#attached']['css']);
 
     // Load the entities from the $items array and store them in the form state
     // for further manipulation if this is the first time the widget form is
@@ -273,7 +304,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#type' => 'weight',
         '#delta' => 50,
         '#default_value' => $value['weight'],
-        '#attributes' => array('class' => array('inline-entity-form-entity-delta')),
+        '#attributes' => array('class' => array('ief-entity-delta')),
       );
 
       // First check to see if this entity should be displayed as a form.
@@ -357,7 +388,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         // Add an actions container with edit and delete buttons for the entity.
         $row['actions'] = array(
           '#type' => 'container',
-          '#attributes' => array('class' => array('inline-entity-form-entity-operations')),
+          '#attributes' => array('class' => array('ief-entity-operations')),
         );
         $row['actions']['ief_entity_edit'] = array(
           '#type' => 'submit',
@@ -488,7 +519,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 /**
  * Calls #element_submit callbacks defined by the entity form.
  *
- * Used as an #element_validate callback added by the plugin form.
+ * Used as an #element_validate callback added by the inline entity type form.
  * Checks if the previous #element_validate callbacks had set any errors,
  * and if not, proceeds to invoke the #element_submit callbacks.
  * #element_submit callbacks modify the entity stored in $form['#entity'] and
@@ -749,9 +780,12 @@ function theme_inline_entity_form_entity_table($variables) {
   // Build an array of entity rows for the table.
   $rows = array();
   foreach (element_children($form) as $key) {
+    $row_classes = array('draggable');
+
     // If the current entity array specifies a form, output that in a multi-
     // column cell in the table.
     if (!empty($form[$key]['form'])) {
+      $row_classes[] = 'ief-row-form';
       $row = array(
         array('data' => '', 'class' => array('ief-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
@@ -761,6 +795,7 @@ function theme_inline_entity_form_entity_table($variables) {
     else {
       $entity = $form[$key]['#entity'];
       // Otherwise output all the entity data in the table.
+      $row_classes[] = 'ief-row-entity';
       $row = array(
         array('data' => '', 'class' => array('ief-tabledrag-handle')),
         drupal_render($form[$key]['delta']),
@@ -786,15 +821,15 @@ function theme_inline_entity_form_entity_table($variables) {
       $row[] = drupal_render($form[$key]['actions']);
     }
 
-    $rows[] = array('data' => $row, 'class' => array('draggable'));
+    $rows[] = array('data' => $row, 'class' => $row_classes);
   }
 
   if (!empty($rows)) {
     // Add the tabledrag JavaScript.
-    drupal_add_tabledrag('inline-entity-form-entity-table', 'order', 'sibling', 'inline-entity-form-entity-delta');
+    drupal_add_tabledrag('ief-entity-table', 'order', 'sibling', 'ief-entity-delta');
 
     // Return the themed table.
-    return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'inline-entity-form-entity-table')));
+    return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'ief-entity-table')));
   }
 }
 

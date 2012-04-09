@@ -23,6 +23,9 @@
  *   - save button: Label of the save button on the add / edit form.
  * - empty text: Text shown above the add form fieldset when no entities
  *   have been added yet.
+ * - css - an array of css filepaths for the inline entity type.
+ *   - base - The base css file, included in all themes.
+ *   - seven - The Seven-specific css file, included in that theme only.
  *
  * @return
  *   An array of types, keyed by entity type.
@@ -42,6 +45,10 @@ function hook_inline_entity_type_info() {
       'save button' => t('Save variation'),
     ),
     'empty text' => t('No product variations have been created. At least one variation is required.'),
+    'css' => array(
+      'base' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.css',
+      'seven' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.seven.css',
+    ),
   );
 
   return $types;

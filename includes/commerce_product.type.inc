@@ -125,17 +125,17 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
   $form['product_attributes'] = array(
     '#type' => 'fieldset',
     '#title' => t('Attributes'),
-    '#attributes' => array('class' => array('container-inline', 'ief-product-attributes')),
+    '#attributes' => array('class' => array('container-inline', 'ief-product-attributes', 'ief-entity-fieldset')),
   );
   $form['product_details'] = array(
     '#type' => 'fieldset',
     '#title' => t('Details'),
-    '#attributes' => array('class' => array('ief-product-details')),
+    '#attributes' => array('class' => array('ief-product-details', 'ief-entity-fieldset')),
   );
   $form['product_image'] = array(
     '#type' => 'fieldset',
     '#title' => t('Variation image'),
-    '#attributes' => array('class' => array('ief-product-image')),
+    '#attributes' => array('class' => array('ief-product-image', 'ief-entity-fieldset')),
   );
 
   $language = !empty($product->language) ? $product->language : LANGUAGE_NONE;
