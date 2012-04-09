@@ -7,6 +7,7 @@
 
 .ief-entity-fieldset {
   border: 0 !important;
+  background-color: white !important;
 }
 
 .ief-entity-fieldset .fieldset-legend {
