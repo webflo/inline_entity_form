@@ -72,27 +72,6 @@ function inline_entity_form_commerce_product_default_fields($types) {
 }
 
 /**
- * IEF table callback: Returns the table used to identify existing products.
- * Additional elements (weight, actions) are appended to this table later on.
- */
-function inline_entity_form_commerce_product_build_table($products) {
-  $table['#header'] = array(
-    array('data' => t('Variation title'), 'class' => array('ief-product-header')),
-    array('data' => t('SKU')),
-  );
-
-  $table['#rows'] = array();
-  foreach ($products as $product) {
-    $table['#rows'][] = array(
-      array('data' => check_plain($product->title), 'class' => array('inline-entity-form-product-title')),
-      array('data' => check_plain($product->sku), 'class' => array('inline-entity-form-product-sku')),
-    );
-  }
-
-  return $table;
-}
-
-/**
  * IEF add/edit form callback: Returns the product form to be embedded.
  *
  * When adding data to $form_state it should be noted that there can be several
