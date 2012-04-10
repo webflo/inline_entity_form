@@ -1,7 +1,8 @@
 
+.ief-row-entity-form {
+  background-color: #D5E9F2 !important;
+}
 .ief-row-form {
-  background-color: white !important;
-  border-top: 1px solid #ccc !important;
   border-bottom: 1px solid #ccc !important;
 }
 
@@ -9,14 +10,12 @@
   border: 0 !important;
   background-color: white !important;
 }
-
 .ief-entity-fieldset .fieldset-legend {
   width: 99%;
   background-color: #E7E7E7;
   height: 25px;
   padding: 5px 0 3px 15px;
 }
-
 .ief-entity-fieldset .fieldset-wrapper {
   margin-top: 15px;
 }

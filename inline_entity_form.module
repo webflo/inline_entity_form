@@ -296,19 +296,17 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     }
 
     foreach ($form_state['inline_entity_form'][$parents_key]['entities'] as $key => $value) {
-      $entity = $value['data'];
+      $element['entities'][$key]['#entity'] = $entity = $value['data'];
 
       // Handle row weights.
       $element['entities'][$key]['#weight'] = $value['weight'];
-      $element['entities'][$key]['delta'] = array(
-        '#type' => 'weight',
-        '#delta' => 50,
-        '#default_value' => $value['weight'],
-        '#attributes' => array('class' => array('ief-entity-delta')),
-      );
 
       // First check to see if this entity should be displayed as a form.
       if (!empty($value['form'])) {
+        $element['entities'][$key]['delta'] = array(
+          '#type' => 'value',
+          '#value' => $value['weight'],
+        );
         $element['entities'][$key]['form'] = array(
           '#type' => 'container',
           '#attributes' => array('class' => array('inline-entity-form-title')),
@@ -382,9 +380,12 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       }
       else {
         $row = &$element['entities'][$key];
-        // Store the entity so that the theme function can access it.
-        $row['#entity'] = $entity;
-
+        $row['delta'] = array(
+          '#type' => 'weight',
+          '#delta' => 50,
+          '#default_value' => $value['weight'],
+          '#attributes' => array('class' => array('ief-entity-delta')),
+        );
         // Add an actions container with edit and delete buttons for the entity.
         $row['actions'] = array(
           '#type' => 'container',
@@ -759,11 +760,19 @@ function theme_inline_entity_form_entity_table($variables) {
       unset($fields[$field_name]);
     }
   }
+  // If one of the rows is in form context, disable tabledrag.
+  $has_tabledrag = TRUE;
+  foreach (element_children($form) as $key) {
+    if (!empty($form[$key]['form'])) {
+      $has_tabledrag = FALSE;
+    }
+  }
 
-  $header = array(
-    array('data' => '', 'class' => array('ief-tabledrag-header')),
-    array('data' => t('Sort order'), 'class' => array('ief-sort-order-header')),
-  );
+  $header = array();
+  if ($has_tabledrag) {
+    $header[] = array('data' => '', 'class' => array('ief-tabledrag-header'));
+    $header[] = array('data' => t('Sort order'), 'class' => array('ief-sort-order-header'));
+  }
   // Add header columns for each field.
   $first = TRUE;
   foreach ($fields as $field_name => $field) {
@@ -780,56 +789,59 @@ function theme_inline_entity_form_entity_table($variables) {
   // Build an array of entity rows for the table.
   $rows = array();
   foreach (element_children($form) as $key) {
-    $row_classes = array('draggable');
-
-    // If the current entity array specifies a form, output that in a multi-
-    // column cell in the table.
+    $entity = $form[$key]['#entity'];
+    $row_classes = array('ief-row-entity');
+    $cells = array();
+    if ($has_tabledrag) {
+      $cells[] = array('data' => '', 'class' => array('ief-tabledrag-handle'));
+      $cells[] = drupal_render($form[$key]['delta']);
+      $row_classes[] = 'draggable';
+    }
+    // Add a special class to rows that have a form underneath, to allow
+    // for additional styling.
     if (!empty($form[$key]['form'])) {
-      $row_classes[] = 'ief-row-form';
+      $row_classes[] = 'ief-row-entity-form';
+    }
+
+    // Add fields that represent the entity..
+    foreach ($fields as $field_name => $field) {
+      if ($field['type'] == 'extra_field') {
+        $data = check_plain($entity->{$field_name});
+      }
+      elseif ($field['type'] == 'field') {
+        $settings = array(
+          'label' => 'hidden',
+          'type' => $field['formatter'],
+          'settings' => $field['settings']
+        );
+        $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
+        $data = drupal_render($renderable_data);
+      }
+
+      $cells[] = array('data' => $data, 'class' => array('inline-entity-form-' . $entity_type . '-' . $field_name));
+    }
+    // Add the buttons belonging to the "Operations" column.
+    $cells[] = drupal_render($form[$key]['actions']);
+    // Create the row.
+    $rows[] = array('data' => $cells, 'class' => $row_classes);
+
+    // If the current entity array specifies a form, output it in the next row.
+    if (!empty($form[$key]['form'])) {
       $row = array(
-        array('data' => '', 'class' => array('ief-tabledrag-handle')),
-        drupal_render($form[$key]['delta']),
         array('data' => drupal_render($form[$key]['form']), 'colspan' => count($fields) + 1),
       );
+      $rows[] = array('data' => $row, 'class' => array('ief-row-form'), 'no_striping' => TRUE);
     }
-    else {
-      $entity = $form[$key]['#entity'];
-      // Otherwise output all the entity data in the table.
-      $row_classes[] = 'ief-row-entity';
-      $row = array(
-        array('data' => '', 'class' => array('ief-tabledrag-handle')),
-        drupal_render($form[$key]['delta']),
-      );
-      // Add fields that represent the entity..
-      foreach ($fields as $field_name => $field) {
-        if ($field['type'] == 'extra_field') {
-          $data = check_plain($entity->{$field_name});
-        }
-        elseif ($field['type'] == 'field') {
-          $settings = array(
-            'label' => 'hidden',
-            'type' => $field['formatter'],
-            'settings' => $field['settings']
-          );
-          $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
-          $data = drupal_render($renderable_data);
-        }
-
-        $row[] = array('data' => $data, 'class' => array('inline-entity-form-' . $entity_type . '-' . $field_name));
-      }
-      // Add the buttons belonging to the "Operations" column.
-      $row[] = drupal_render($form[$key]['actions']);
-    }
-
-    $rows[] = array('data' => $row, 'class' => $row_classes);
   }
 
   if (!empty($rows)) {
-    // Add the tabledrag JavaScript.
-    drupal_add_tabledrag('ief-entity-table', 'order', 'sibling', 'ief-entity-delta');
+    if ($has_tabledrag) {
+      // Add the tabledrag JavaScript.
+      drupal_add_tabledrag('ief-entity-table', 'order', 'sibling', 'ief-entity-delta');
+    }
 
     // Return the themed table.
-    return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'ief-entity-table')));
+    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => array('id' => 'ief-entity-table')));
   }
 }
 
