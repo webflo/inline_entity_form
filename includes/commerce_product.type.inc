@@ -94,7 +94,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
     'inline_entity_form_commerce_product_form_submit',
   );
   // Ensure this include file is loaded when the form is rebuilt from the cache.
-  $form_state['build_info']['files']['form'] = drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc';
+  $form_state['build_info']['files']['inline_form'] = drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc';
 
   // Some form elements belong in a fieldset for presentation, but can't
   // be moved into one because of the form_state['values'] hierarchy. Those

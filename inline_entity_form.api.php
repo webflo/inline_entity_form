@@ -35,7 +35,7 @@ function hook_inline_entity_type_info() {
   $types['commerce_product'] = array(
     'file' => drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc',
     'callbacks' => array(
-      'table' => 'inline_entity_form_commerce_product_build_table',
+      'default fields' => 'inline_entity_form_commerce_product_default_fields',
       'form' => 'inline_entity_form_commerce_product_form',
       'delete form' => 'inline_entity_form_commerce_product_delete_form',
     ),

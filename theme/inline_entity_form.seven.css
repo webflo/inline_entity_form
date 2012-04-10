@@ -8,14 +8,16 @@
 
 .ief-entity-fieldset {
   border: 0 !important;
+}
+.ief-entity-fieldset, .ief-entity-fieldset fieldset {
   background-color: white !important;
 }
-.ief-entity-fieldset .fieldset-legend {
+.ief-entity-fieldset > legend span.fieldset-legend {
   width: 99%;
   background-color: #E7E7E7;
   height: 25px;
   padding: 5px 0 3px 15px;
 }
-.ief-entity-fieldset .fieldset-wrapper {
+.ief-entity-fieldset > .fieldset-wrapper {
   margin-top: 15px;
 }
