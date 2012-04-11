@@ -42,10 +42,29 @@ function inline_entity_form_commerce_product_default_fields($types) {
     'weight' => 2,
   );
 
-  // If there's only one product type allowed, and there's up to 3 attributes,
-  // show them instead of the title field.
+  // If only one product type is allowed, its fields can be used as columns.
   if (count($types) == 1) {
     $type = reset($types);
+
+    foreach (field_info_instances('commerce_product', $type) as $field_name => $instance) {
+      $field = field_info_field($field_name);
+
+      // If the product has an imagefield, show it.
+      if ($field['type'] == 'image' && $field['cardinality'] == 1) {
+        $fields[$field_name] = array(
+          'type' => 'field',
+          'label' => $instance['label'],
+          'formatter' => 'image',
+          'settings' => array('image_style' => 'thumbnail'),
+          'visible' => TRUE,
+          'weight' => -10,
+        );
+        // Don't add any other imagefields. One is enough.
+        break;
+      }
+    }
+
+    // If the type has up to 3 attributes, show them instead of the title field.
     $attributes = _inline_entity_form_commerce_product_attributes($type);
     if (count($attributes) <= 3) {
       $fields['title']['visible'] = FALSE;
@@ -67,6 +86,15 @@ function inline_entity_form_commerce_product_default_fields($types) {
       }
     }
   }
+
+  $fields['commerce_price'] = array(
+    'type' => 'field',
+    'label' => t('Price'),
+    'formatter' => 'commerce_price_formatted_amount',
+    'settings' => array(),
+    'visible' => TRUE,
+    'weight' => 99,
+  );
 
   return $fields;
 }
