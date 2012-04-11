@@ -194,6 +194,11 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
     $field_name = reset($imagefields);
     $language = $form[$field_name]['#language'];
     unset($form[$field_name][$language][0]['#title']);
+    // Prevent multi-value imagefields from rendering their own fieldsets.
+    if (isset($form[$field_name][$language]['#theme_wrappers']) && in_array('fieldset', $form[$field_name][$language]['#theme_wrappers'])) {
+      $key = array_search('fieldset', $form[$field_name][$language]['#theme_wrappers']);
+      unset($form[$field_name][$language]['#theme_wrappers'][$key]);
+    }
   }
 
   return $form;
