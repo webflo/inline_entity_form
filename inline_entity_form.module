@@ -30,6 +30,20 @@ function inline_entity_form_inline_entity_type_info() {
       'base' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.css',
     ),
   );
+  $types['commerce_line_item'] = array(
+    'file' => drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_line_item.type.inc',
+    'callbacks' => array(
+      'default fields' => 'inline_entity_form_commerce_line_item_default_fields',
+      'form' => 'inline_entity_form_commerce_line_item_form',
+      'delete form' => 'inline_entity_form_commerce_line_item_delete_form',
+    ),
+    'labels' => array(
+      'add fieldset' => t('Add new line item'),
+      'add button' => t('Add line item'),
+      'save button' => t('Save line item'),
+    ),
+    'empty text' => t('No line items found.'),
+  );
 
   return $types;
 }
@@ -127,7 +141,7 @@ function inline_entity_form_field_widget_info() {
 
   $widgets['inline_entity_form'] = array(
     'label' => t('Inline entity form'),
-    'field types' => array('commerce_product_reference', 'entityreference'),
+    'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
     'settings' => array('fields' => array()),
     'behaviors' => array(
       'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -174,6 +188,10 @@ function inline_entity_form_settings($field, $instance) {
         $settings['bundles'] = array_values($bundles);
       }
     }
+  }
+  elseif ($field['type'] == 'commerce_line_item_reference') {
+    $settings['entity_type'] = 'commerce_line_item';
+    $settings['column'] = 'line_item_id';
   }
 
   // By default, allow entities of all bundles to be created.
@@ -984,10 +1002,9 @@ function inline_entity_form_widget_form_action_allow_action($action, $target_act
  * would break up that hierarchy, so it's not an option for Field API fields.
  * Therefore, we wait until the pre_render stage, where any changes we make
  * affect presentation only and aren't reflected in $form_state['values'].
- *
- * Copied from views (views_ui_pre_render_add_fieldset_markup()).
  */
 function inline_entity_form_pre_render_add_fieldset_markup($form) {
+  $sort = array();
   foreach (element_children($form) as $key) {
     $element = $form[$key];
     // In our form builder functions, we added an arbitrary #fieldset property
@@ -997,7 +1014,16 @@ function inline_entity_form_pre_render_add_fieldset_markup($form) {
       $form[$element['#fieldset']][$key] = $element;
       // Remove the original element this duplicates.
       unset($form[$key]);
+      // Mark the fieldset for sorting.
+      if (!in_array($key, $sort)) {
+        $sort[] = $element['#fieldset'];
+      }
     }
+  }
+
+  // Sort all fieldsets, so that element #weight stays respected.
+  foreach ($sort as $key) {
+    uasort($form[$key], 'element_sort');
   }
 
   return $form;
