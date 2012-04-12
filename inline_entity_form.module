@@ -833,6 +833,10 @@ function theme_inline_entity_form_entity_table($variables) {
           'settings' => $field['settings']
         );
         $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
+        // The field has specified an exact delta to display.
+        if (isset($field['delta'])) {
+          $renderable_data = $renderable_data[$field['delta']];
+        }
         $data = drupal_render($renderable_data);
       }
 

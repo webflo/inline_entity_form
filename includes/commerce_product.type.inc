@@ -25,6 +25,7 @@
  *   Special keys for type 'field':
  *   - formatter: The formatter used to display the field, or "hidden".
  *   - settings: An array passed to the formatter. If empty, defaults are used.
+ *   - delta: If provided, limits the field to just the specified delta.
  */
 function inline_entity_form_commerce_product_default_fields($types) {
   $fields = array();
@@ -50,12 +51,13 @@ function inline_entity_form_commerce_product_default_fields($types) {
       $field = field_info_field($field_name);
 
       // If the product has an imagefield, show it.
-      if ($field['type'] == 'image' && $field['cardinality'] == 1) {
+      if ($field['type'] == 'image') {
         $fields[$field_name] = array(
           'type' => 'field',
           'label' => $instance['label'],
           'formatter' => 'image',
           'settings' => array('image_style' => 'thumbnail'),
+          'delta' => 0,
           'visible' => TRUE,
           'weight' => -10,
         );
