@@ -315,6 +315,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 
     foreach ($form_state['inline_entity_form'][$parents_key]['entities'] as $key => $value) {
       $element['entities'][$key]['#entity'] = $entity = $value['data'];
+      $element['entities'][$key]['#needs_save'] = $value['needs_save'];
 
       // Handle row weights.
       $element['entities'][$key]['#weight'] = $value['weight'];
@@ -808,6 +809,15 @@ function theme_inline_entity_form_entity_table($variables) {
   $rows = array();
   foreach (element_children($form) as $key) {
     $entity = $form[$key]['#entity'];
+    $entity_id = entity_id($entity_type, $entity);
+    // Many field formatters (such as the ones for files and images) need
+    // certain data that might be missing on unsaved entities because the field
+    // load hooks haven't run yet. Because of that, those hooks are invoked
+    // explicitly. This is the same trick used by node_preview().
+    if ($form[$key]['#needs_save']) {
+      _field_invoke_multiple('load', $entity_type, array($entity_id => $entity));
+    }
+
     $row_classes = array('ief-row-entity');
     $cells = array();
     if ($has_tabledrag) {
@@ -835,7 +845,13 @@ function theme_inline_entity_form_entity_table($variables) {
         $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
         // The field has specified an exact delta to display.
         if (isset($field['delta'])) {
-          $renderable_data = $renderable_data[$field['delta']];
+          if (!empty($renderable_data[$field['delta']])) {
+            $renderable_data = $renderable_data[$field['delta']];
+          }
+          else {
+            // The field has no value for the specified delta, show nothing.
+            $renderable_data = array();
+          }
         }
         $data = drupal_render($renderable_data);
       }
