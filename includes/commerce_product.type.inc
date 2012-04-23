@@ -234,10 +234,16 @@ function inline_entity_form_commerce_product_form_validate(&$form, &$form_state)
  * IEF add/edit form submit callback.
  */
 function inline_entity_form_commerce_product_form_submit(&$form, &$form_state) {
+  global $user;
+
   $product_values = drupal_array_get_nested_value($form_state['values'], $form['#parents']);
   $product = &$form['#entity'];
   $product->title = $product_values['sku'];
   $product->sku = $product_values['sku'];
+  // Assign newly created products to the current user.
+  if (empty($product->product_id)) {
+    $product->uid = $user->uid;
+  }
 
   field_attach_submit('commerce_product', $product, $form, $form_state);
   inline_entity_form_cleanup_field_form_state($form, $form_state);
