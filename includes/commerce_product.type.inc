@@ -6,6 +6,23 @@
  */
 
 /**
+ * IEF settings callback: Returns a settings form embedded into the IEF widget
+ * settings form. The returned settings are later available in form callbacks
+ * through $form['#settings'].
+ */
+function inline_entity_form_commerce_product_settings($settings, $instance) {
+  $form = array();
+  $form['autogenerate_title'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Auto generate the product title'),
+    '#description' => t('This will hide the title input field and generate the title by appending any available attributes to the @entity title.', array('@entity' => $instance['entity_type'])),
+    '#default_value' => isset($settings['autogenerate_title']) ? $settings['autogenerate_title'] : TRUE,
+  );
+
+  return $form;
+}
+
+/**
  * IEF default fields callback: Returns an array of fields (which can be either
  * Field API fields or properties provided through hook_field_extra_fields())
  * that should be used to represent a selected product.
@@ -71,15 +88,13 @@ function inline_entity_form_commerce_product_default_fields($types) {
     if (count($attributes) <= 3) {
       $fields['title']['visible'] = FALSE;
 
-      foreach ($attributes as $attribute) {
-        $field = field_info_field($attribute);
-        $instance = field_info_instance('commerce_product', $attribute, $type);
-        $field_type = field_info_field_types($field['type']);
+      foreach ($attributes as $field_name => $attribute) {
+        $field_type = field_info_field_types($attribute['field']['type']);
 
         $weight = -3;
-        $fields[$attribute] = array(
+        $fields[$field_name] = array(
           'type' => 'field',
-          'label' => $instance['label'],
+          'label' => $attribute['instance']['label'],
           'formatter' => $field_type['default_formatter'],
           'settings' => array(),
           'visible' => TRUE,
@@ -150,13 +165,23 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
   $language = !empty($product->language) ? $product->language : LANGUAGE_NONE;
   $form['sku'] = array(
     '#type' => 'textfield',
-    '#title' => t('Product SKU'),
-    '#description' => t('Supply a unique identifier for this product using letters, numbers, hyphens, and underscores. Commas may not be used.'),
+    '#title' => t('SKU'),
+    '#description' => t('Supply a unique identifier using letters, numbers, hyphens, and underscores. Commas may not be used.'),
     '#default_value' => $product->sku,
     '#maxlength' => 128,
     '#required' => TRUE,
     '#fieldset' => 'product_details',
   );
+  if (isset($form['#settings']['autogenerate_title']) && $form['#settings']['autogenerate_title'] == FALSE) {
+    $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Variation Title'),
+      '#default_value' => $product->title,
+      '#maxlength' => 128,
+      '#required' => TRUE,
+      '#fieldset' => 'product_details',
+    );
+  }
   field_attach_form('commerce_product', $product, $form, $form_state, $language);
 
   // Arrange attributes.
@@ -166,7 +191,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
     $form['product_attributes']['#access'] = FALSE;
   }
   else {
-    foreach ($attributes as $field_name) {
+    foreach ($attributes as $field_name => $attribute) {
       $form[$field_name]['#fieldset'] = 'product_attributes';
     }
   }
@@ -181,7 +206,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
       $form[$field_name]['#fieldset'] = 'product_image';
       $imagefields[] = $field_name;
     }
-    elseif (!in_array($field_name, $attributes)) {
+    elseif (!isset($attributes[$field_name])) {
       $form[$field_name]['#fieldset'] = 'product_details';
     }
   }
@@ -238,7 +263,6 @@ function inline_entity_form_commerce_product_form_submit(&$form, &$form_state) {
 
   $product_values = drupal_array_get_nested_value($form_state['values'], $form['#parents']);
   $product = &$form['#entity'];
-  $product->title = $product_values['sku'];
   $product->sku = $product_values['sku'];
   // Assign newly created products to the current user.
   if (empty($product->product_id)) {
@@ -247,6 +271,22 @@ function inline_entity_form_commerce_product_form_submit(&$form, &$form_state) {
 
   field_attach_submit('commerce_product', $product, $form, $form_state);
   inline_entity_form_cleanup_field_form_state($form, $form_state);
+
+  if (isset($form['#settings']['autogenerate_title']) && $form['#settings']['autogenerate_title'] == FALSE) {
+    $product->title = $product_values['title'];
+  }
+  else {
+    // Generate the product title. Take the parent entity title as the base.
+    $product->title = $form_state['values']['title'];
+    $attributes = _inline_entity_form_commerce_product_attributes($product->type);
+    if (!empty($attributes)) {
+      $wrapper = entity_metadata_wrapper('commerce_product', $product);
+      foreach ($attributes as $field_name => $attribute) {
+        $attribute_values[] = $wrapper->{$field_name}->label();
+      }
+      $product->title .= ' (' . implode(', ', $attribute_values) . ')';
+    }
+  }
 }
 
 /**
@@ -264,8 +304,6 @@ function inline_entity_form_commerce_product_delete_form($form, $form_state) {
 /**
  * Returns a list of field names that are used as attributes for the given
  * product type.
- *
- * Copied from commerce_cart.module
  */
 function _inline_entity_form_commerce_product_attributes($type) {
   $attributes = array();
@@ -283,9 +321,16 @@ function _inline_entity_form_commerce_product_attributes($type) {
     // a product attribute field and if its attribute field settings
     // specify that this functionality is enabled...
     if (commerce_cart_field_attribute_eligible($field) && $commerce_cart_settings['attribute_field']) {
-      $attributes[] = $field['field_name'];
+      $attributes[$name] = array(
+        'field' => $field,
+        'instance' => $instance,
+        'weight' => $instance['widget']['weight'],
+      );
     }
   }
+
+  // Sort the fields by weight.
+  uasort($attributes, 'drupal_sort_weight');
 
   return $attributes;
 }

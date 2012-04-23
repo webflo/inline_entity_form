@@ -13,6 +13,8 @@
  *   for this type.
  * - callbacks: an array of callback function names used by the widget for
  *   various operations on the referenced entities (list, add, edit, delete).
+ *   - settings: Provides a settings form shown in the widget settings.
+ *     The settings are later available to all form callbacks.
  *   - default fields: Provides a default list of fields that should be used to
  *   represent each selected entity.
  *   - form: Provides an add / edit form.
@@ -35,6 +37,7 @@ function hook_inline_entity_type_info() {
   $types['commerce_product'] = array(
     'file' => drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc',
     'callbacks' => array(
+      'settings' => 'inline_entity_form_commerce_product_settings',
       'default fields' => 'inline_entity_form_commerce_product_default_fields',
       'form' => 'inline_entity_form_commerce_product_form',
       'delete form' => 'inline_entity_form_commerce_product_delete_form',

@@ -16,6 +16,7 @@ function inline_entity_form_inline_entity_type_info() {
   $types['commerce_product'] = array(
     'file' => drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc',
     'callbacks' => array(
+      'settings' => 'inline_entity_form_commerce_product_settings',
       'default fields' => 'inline_entity_form_commerce_product_default_fields',
       'form' => 'inline_entity_form_commerce_product_form',
       'delete form' => 'inline_entity_form_commerce_product_delete_form',
@@ -142,7 +143,10 @@ function inline_entity_form_field_widget_info() {
   $widgets['inline_entity_form'] = array(
     'label' => t('Inline entity form'),
     'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
-    'settings' => array('fields' => array()),
+    'settings' => array(
+      'fields' => array(),
+      'type_settings' => array(),
+    ),
     'behaviors' => array(
       'multiple values' => FIELD_BEHAVIOR_CUSTOM,
       'default value' => FIELD_BEHAVIOR_NONE,
@@ -150,6 +154,39 @@ function inline_entity_form_field_widget_info() {
   );
 
   return $widgets;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function inline_entity_form_field_widget_settings_form($field, $instance) {
+  $widget = $instance['widget'];
+  $settings = $widget['settings'];
+  $ief_settings = inline_entity_form_settings($field, $instance);
+  $entity_info = entity_get_info($ief_settings['entity_type']);
+  $type_info = inline_entity_form_type($ief_settings['entity_type']);
+  // The callbacks are in another file, include it.
+  if (!empty($type_info['file'])) {
+    include_once($type_info['file']);
+  }
+
+  $element = array();
+  // The fields are not editable from the UI for now.
+  $element['fields'] = array(
+    '#type' => 'value',
+    '#value' => $settings['fields'],
+  );
+
+  // Add type-specific settings if they exist.
+  if (!empty($type_info['callbacks']['settings'])) {
+    $element['type_settings'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Inline Entity Form: %type', array('%type' => $entity_info['label'])),
+    );
+    $element['type_settings'] += $type_info['callbacks']['settings']($settings['type_settings'], $instance);
+  }
+
+  return $element;
 }
 
 /**
@@ -335,6 +372,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           // Store the entity on the form, to be modified in #element_submit.
           '#entity' => $entity,
           '#entity_type' => $settings['entity_type'],
+          '#settings' => $widget['settings']['type_settings'],
         );
         $element['entities'][$key]['form']['actions'] = array(
           '#type' => 'container',
@@ -499,6 +537,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         // Store the entity on the form, to be modified in #element_submit.
         '#entity' => $entity,
         '#entity_type' => $settings['entity_type'],
+        '#settings' => $widget['settings']['type_settings'],
       );
       $element['add_form']['actions'] = array(
         '#type' => 'container',
