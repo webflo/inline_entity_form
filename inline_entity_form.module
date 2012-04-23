@@ -639,6 +639,10 @@ function inline_entity_form_cleanup_field_form_state($entity_form, &$form_state)
 function inline_entity_form_element_validate($element, &$form_state, $form) {
   // Extract the name of the triggering element from the form state array.
   $triggering_element_name = end($form_state['triggering_element']['#array_parents']);
+  // Build a parents array for this element's values in the form.
+  $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
+  $parents_key = strtr(implode('-', $parents), '_', '-');
+  $settings = $form_state['inline_entity_form'][$parents_key]['settings'];
 
   // Abort validation if the form has been rebuilt by an unknown element, such
   // as a field widget inside the embedded form.
@@ -646,10 +650,12 @@ function inline_entity_form_element_validate($element, &$form_state, $form) {
     return;
   }
 
-  // Build a parents array for this element's values in the form.
-  $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
-  $parents_key = strtr(implode('-', $parents), '_', '-');
-  $settings = $form_state['inline_entity_form'][$parents_key]['settings'];
+  // Abort validation if the triggering element doesn't share parents with the
+  // current element (which means that the event came from another IEF widget).
+  $triggering_parents = array_slice($form_state['triggering_element']['#array_parents'], 0, count($parents));
+  if ($parents != $triggering_parents) {
+    return;
+  }
 
   // Loop over the submitted delta values and update the weight of the entities
   // in the form state.
