@@ -171,6 +171,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
     '#maxlength' => 128,
     '#required' => TRUE,
     '#fieldset' => 'product_details',
+    '#weight' => -10,
   );
   if (isset($form['#settings']['autogenerate_title']) && $form['#settings']['autogenerate_title'] == FALSE) {
     $form['title'] = array(
@@ -180,6 +181,7 @@ function inline_entity_form_commerce_product_form($form, &$form_state) {
       '#maxlength' => 128,
       '#required' => TRUE,
       '#fieldset' => 'product_details',
+      '#weight' => -9,
     );
   }
   field_attach_form('commerce_product', $product, $form, $form_state, $language);
