@@ -311,6 +311,11 @@ function inline_entity_form_commerce_product_delete_form($form, $form_state) {
  * product type.
  */
 function _inline_entity_form_commerce_product_attributes($type) {
+  // Attributes are tied to the commerce_cart module.
+  if (!module_exists('commerce_cart')) {
+    return array();
+  }
+
   $attributes = array();
   // Loop through all the field instances on that product type.
   foreach (field_info_instances('commerce_product', $type) as $name => $instance) {
