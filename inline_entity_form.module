@@ -165,10 +165,12 @@ function inline_entity_form_field_widget_settings_form($field, $instance) {
   $ief_settings = inline_entity_form_settings($field, $instance);
   $entity_info = entity_get_info($ief_settings['entity_type']);
   $type_info = inline_entity_form_type($ief_settings['entity_type']);
-  // The callbacks are in another file, include it.
-  if (!empty($type_info['file'])) {
-    include_once($type_info['file']);
+  // The current entity type is not supported, execution can't continue.
+  if (!$type_info) {
+    return array();
   }
+  // The callbacks are in another file, include it.
+  include_once $type_info['file'];
 
   $element = array();
   // The fields are not editable from the UI for now.
@@ -803,10 +805,14 @@ function inline_entity_form_field_attach_submit($entity_type, $entity, $form, &$
   foreach (field_info_instances($entity_type, $bundle_name) as $instance_name => $instance) {
     if (isset($instance['widget']) && $instance['widget']['type'] == 'inline_entity_form') {
       $field_name = $instance['field_name'];
-      $field = field_info_field($field_name);
       $langcode = $form[$field_name]['#language'];
       $parents = array_merge($form['#parents'], array($field_name, $langcode));
       $parents_key = strtr(implode('-', $parents), '_', '-');
+      // There's no IEF data for this field, skip it.
+      if (empty($form_state['inline_entity_form'][$parents_key])) {
+        continue;
+      }
+
       $values = $form_state['inline_entity_form'][$parents_key];
       $settings = $values['settings'];
       // Delete any entities staged for deletion.
