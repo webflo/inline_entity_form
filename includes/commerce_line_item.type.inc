@@ -48,15 +48,11 @@ function inline_entity_form_commerce_line_item_form($form, &$form_state) {
 
   $form['#element_validate'] = array(
     'inline_entity_form_commerce_line_item_form_validate',
-    'inline_entity_form_process_submit',
   );
   $form['#element_submit'] = array(
     'inline_entity_form_commerce_line_item_form_submit',
   );
-  // Ensure this include file is loaded when the form is rebuilt from the cache.
-  $form_state['build_info']['files']['inline_form'] = drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_line_item.type.inc';
 
-  $form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
   $form['line_item_details'] = array(
     '#type' => 'fieldset',
     '#title' => t('Line item details'),

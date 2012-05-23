@@ -251,14 +251,13 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   $widget = $instance['widget'];
   $settings = inline_entity_form_settings($field, $instance);
   $type_info = inline_entity_form_type($settings['entity_type']);
+  $type_settings = $widget['settings']['type_settings'];
   // The current entity type is not supported, execution can't continue.
   if (!$type_info) {
     return $element;
   }
   // The callbacks are in another file, include it.
-  if (!empty($type_info['file'])) {
-    include_once($type_info['file']);
-  }
+  include_once $type_info['file'];
 
   if ($widget['type'] == 'inline_entity_form') {
     // Build a parents array for this element's values in the form.
@@ -372,67 +371,20 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           // Store the entity on the form, to be modified in #element_submit.
           '#entity' => $entity,
           '#entity_type' => $settings['entity_type'],
-          '#settings' => $widget['settings']['type_settings'],
-        );
-        $element['entities'][$key]['form']['actions'] = array(
-          '#type' => 'container',
-          '#weight' => 100,
+          // Add IEF-specific keys to be used when generating form actions.
+          '#ief_wrapper' => $wrapper,
+          '#op' => $value['form'],
+          '#delta' => $parents_delta[$parents_key] . '-' . $key,
         );
         // Prepare data for the form callbacks.
         $form = &$element['entities'][$key]['form'];
 
-        // Add the entity edit form.
+        // Add the appropriate form.
         if ($value['form'] == 'edit') {
-          $form += $type_info['callbacks']['form']($form, $form_state);
-
-          $form['actions']['ief_edit_save'] = array(
-            '#type' => 'submit',
-            '#value' => $type_info['labels']['save button'],
-            '#name' => 'ief-' . $parents_delta[$parents_key] . '-edit-submit-' . $key,
-            '#limit_validation_errors' => array($form['#parents']),
-            '#submit' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_widget_refresh',
-              'wrapper' => $wrapper,
-            ),
-          );
-          $form['actions']['ief_edit_cancel'] = array(
-            '#type' => 'submit',
-            '#value' => t('Cancel'),
-            '#name' => 'ief-' . $parents_delta[$parents_key] . '-edit-cancel-' . $key,
-            '#limit_validation_errors' => array(),
-            '#submit' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_widget_refresh',
-              'wrapper' => $wrapper,
-            ),
-          );
+          $form += inline_entity_form_type_form($settings['entity_type'], $form, $form_state, $type_settings);
         }
         elseif ($value['form'] == 'delete') {
-          $form += $type_info['callbacks']['delete form']($form, $form_state, $entity);
-
-          $form['actions']['ief_delete_confirm'] = array(
-            '#type' => 'submit',
-            '#value' => t('Delete'),
-            '#name' => 'ief-' . $parents_delta[$parents_key] . '-delete-confirm-' . $key,
-            '#limit_validation_errors' => array(),
-            '#submit' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_widget_refresh',
-              'wrapper' => $wrapper,
-            ),
-          );
-          $form['actions']['ief_delete_cancel'] = array(
-            '#type' => 'submit',
-            '#value' => t('Cancel'),
-            '#name' => 'ief-' . $parents_delta[$parents_key] . '-delete-cancel-' . $key,
-            '#limit_validation_errors' => array(),
-            '#submit' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_widget_refresh',
-              'wrapper' => $wrapper,
-            ),
-          );
+          $form += inline_entity_form_type_delete_form($settings['entity_type'], $form, $form_state, $type_settings);
         }
       }
       else {
@@ -537,37 +489,16 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         // Store the entity on the form, to be modified in #element_submit.
         '#entity' => $entity,
         '#entity_type' => $settings['entity_type'],
-        '#settings' => $widget['settings']['type_settings'],
+        // Add IEF-specific keys to be used when generating form actions.
+        '#ief_wrapper' => $wrapper,
+        '#op' => 'add',
+        '#delta' => $parents_delta[$parents_key],
       );
-      $element['add_form']['actions'] = array(
-        '#type' => 'container',
-        '#weight' => 100,
-      );
-      $element['add_form'] += $type_info['callbacks']['form']($element['add_form'], $form_state);
-      $element['add_form']['actions']['ief_add_save'] = array(
-        '#type' => 'submit',
-        '#value' => $type_info['labels']['save button'],
-        '#name' => 'ief-' . $parents_delta[$parents_key] . '-add-submit',
-        '#limit_validation_errors' => array($element['add_form']['#parents']),
-        '#submit' => array(),
-        '#ajax' => array(
-          'callback' => 'inline_entity_form_widget_refresh',
-          'wrapper' => $wrapper,
-        ),
-      );
+      $element['add_form'] += inline_entity_form_type_form($settings['entity_type'], $element['add_form'], $form_state, $type_settings);
+
       // Make sure the Cancel button is not shown when there are no entities.
-      if (!empty($form_state['inline_entity_form'][$parents_key]['entities'])) {
-        $element['add_form']['actions']['ief_add_cancel'] = array(
-          '#type' => 'submit',
-          '#value' => t('Cancel'),
-          '#name' => 'ief-' . $parents_delta[$parents_key] . '-add-cancel',
-          '#limit_validation_errors' => array(),
-          '#submit' => array(),
-          '#ajax' => array(
-            'callback' => 'inline_entity_form_widget_refresh',
-            'wrapper' => $wrapper,
-          ),
-        );
+      if (empty($form_state['inline_entity_form'][$parents_key]['entities'])) {
+        $element['add_form']['actions']['ief_add_cancel']['#access'] = FALSE;
       }
     }
 
@@ -576,13 +507,132 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 }
 
 /**
- * Calls #element_submit callbacks defined by the entity form.
+ * Returns the add / edit form for the passed entity type.
  *
- * Used as an #element_validate callback added by the inline entity type form.
+ * @param $entity_type
+ *   The entity type being managed inline.
+ * @param $form
+ *   The form array that will receive the add / edit form.
+ * @param $form_state
+ *   The form state of the complete IEF widget.
+ * @param $type_settings
+ *   Type-specific settings specified through the IEF widget settings.
+ *
+ * @return
+ *   The form array containing the embedded add / edit form.
+ */
+function inline_entity_form_type_form($entity_type, $form, &$form_state, $type_settings) {
+  $type_info = inline_entity_form_type($entity_type);
+
+  // Ensure that the include file is loaded when the form is rebuilt from cache.
+  $form_state['build_info']['files']['inline_form'] = $type_info['file'];
+
+  // Store the type settings so that the callbacks can access them.
+  $form['#settings'] = $type_settings;
+  // Retrieve the form provided by the type callback.
+  $form = $type_info['callbacks']['form']($form, $form_state);
+
+  // Add the actions
+  $form['actions'] = array(
+    '#type' => 'container',
+    '#weight' => 100,
+  );
+  $form['actions']['ief_' . $form['#op'] . '_save'] = array(
+    '#type' => 'submit',
+    '#value' => $type_info['labels']['save button'],
+    '#name' => 'ief-' . $form['#op'] . '-submit-' . $form['#delta'],
+    '#limit_validation_errors' => array($form['#parents']),
+    '#submit' => array(),
+    '#ajax' => array(
+      'callback' => 'inline_entity_form_widget_refresh',
+      'wrapper' => $form['#ief_wrapper'],
+    ),
+  );
+  $form['actions']['ief_' . $form['#op'] . '_cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#name' => 'ief-' . $form['#op'] . '-cancel-' . $form['#delta'],
+    '#limit_validation_errors' => array(),
+    '#submit' => array(),
+    '#ajax' => array(
+      'callback' => 'inline_entity_form_widget_refresh',
+      'wrapper' => $form['#ief_wrapper'],
+    ),
+  );
+
+  // Add the inline_entity_form_process_submit validation callback.
+  // It is special and always needs to be executed last. It calls the callbacks
+  // defined in #element_submit (Drupal core only defines #element_validate).
+  $form['#element_validate'][] = 'inline_entity_form_process_submit';
+  // Add the pre_render callback that powers the #fieldset form element key,
+  // which moves the element to the specified fieldset without modifying its
+  // position in $form_state['values'].
+  $form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
+
+  return $form;
+}
+
+/**
+ * Returns the delete form for the passed entity type.
+ *
+ * @param $entity_type
+ *   The entity type being managed inline.
+ * @param $form
+ *   The form array that will receive the delete form.
+ * @param $form_state
+ *   The form state of the complete IEF widget.
+ * @param $type_settings
+ *   Type-specific settings specified through the IEF widget settings.
+ *
+ * @return
+ *   The form array containing the embedded delete form.
+ */
+function inline_entity_form_type_delete_form($entity_type, $form, &$form_state, $type_settings) {
+  $type_info = inline_entity_form_type($entity_type);
+
+  // Store the type settings so that the callbacks can access them.
+  $form['#settings'] = $type_settings;
+  // Retrieve the form provided by the type callback.
+  $form = $type_info['callbacks']['delete form']($form, $form_state);
+
+  // Add the actions
+  $form['actions'] = array(
+    '#type' => 'container',
+    '#weight' => 100,
+  );
+  $form['actions']['ief_delete_confirm'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete'),
+    '#name' => 'ief-delete-confirm-' . $form['#delta'],
+    '#limit_validation_errors' => array(),
+    '#submit' => array(),
+    '#ajax' => array(
+      'callback' => 'inline_entity_form_widget_refresh',
+      'wrapper' => $form['#ief_wrapper'],
+    ),
+  );
+  $form['actions']['ief_delete_cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#name' => 'ief-delete-cancel-' . $form['#delta'],
+    '#limit_validation_errors' => array(),
+    '#submit' => array(),
+    '#ajax' => array(
+      'callback' => 'inline_entity_form_widget_refresh',
+      'wrapper' => $form['#ief_wrapper'],
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Calls #element_submit callbacks.
+ *
  * Checks if the previous #element_validate callbacks had set any errors,
  * and if not, proceeds to invoke the #element_submit callbacks.
- * #element_submit callbacks modify the entity stored in $form['#entity'] and
- * after they have been executed the entity is considered ready for saving.
+ * #element_submit callbacks modify the entity stored in $entity_form['#entity']
+ * and after they have been executed the entity is considered ready for saving.
  *
  * @param $entity_form
  *  The form of the entity being managed inline.

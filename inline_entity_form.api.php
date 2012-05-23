@@ -16,7 +16,7 @@
  *   - settings: Provides a settings form shown in the widget settings.
  *     The settings are later available to all form callbacks.
  *   - default fields: Provides a default list of fields that should be used to
- *   represent each selected entity.
+ *     represent each selected entity.
  *   - form: Provides an add / edit form.
  *   - delete form: Provides a confirmation delete form.
  * - labels: an array of labels shown in the widget for this entity type.

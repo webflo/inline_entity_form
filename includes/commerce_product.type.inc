@@ -126,26 +126,13 @@ function inline_entity_form_commerce_product_default_fields($types) {
 function inline_entity_form_commerce_product_form($form, &$form_state) {
   $product = $form['#entity'];
 
-  // Add the validation callbacks. Note that inline_entity_form_process_submit
-  // is special and needs to always be executed last. It calls the callbacks
-  // defined in #element_submit (Drupal core only defines #element_validate).
-  // #element_submit callbacks modify the entity stored in $form['#entity'] and
-  // after they have been executed the entity is considered ready for saving.
   $form['#element_validate'] = array(
     'inline_entity_form_commerce_product_form_validate',
-    'inline_entity_form_process_submit',
   );
   $form['#element_submit'] = array(
     'inline_entity_form_commerce_product_form_submit',
   );
-  // Ensure this include file is loaded when the form is rebuilt from the cache.
-  $form_state['build_info']['files']['inline_form'] = drupal_get_path('module', 'inline_entity_form') . '/includes/commerce_product.type.inc';
 
-  // Some form elements belong in a fieldset for presentation, but can't
-  // be moved into one because of the form_state['values'] hierarchy. Those
-  // elements can add a #fieldset => 'fieldset_name' property, and they'll
-  // be moved to their fieldset during pre_render.
-  $form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
   $form['product_attributes'] = array(
     '#type' => 'fieldset',
     '#title' => t('Attributes'),
