@@ -279,7 +279,13 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       '#description' => NULL,
       '#prefix' => '<div id="' . $wrapper . '">',
       '#suffix' => '</div>',
-      '#attached' => array('css' => array()),
+      '#attached' => array(
+        'css' => array(),
+        'js' => array(
+          // Give the JS file a weight so that it runs after file.js.
+          drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js' => array('weight' => 10),
+        ),
+      ),
     ) + $element;
 
     $base_css = array(
@@ -545,6 +551,7 @@ function inline_entity_form_type_form($entity_type, $form, &$form_state, $type_s
     '#name' => 'ief-' . $form['#op'] . '-submit-' . $form['#delta'],
     '#limit_validation_errors' => array($form['#parents']),
     '#submit' => array(),
+    '#attributes' => array('class' => array('ief-entity-submit')),
     '#ajax' => array(
       'callback' => 'inline_entity_form_widget_refresh',
       'wrapper' => $form['#ief_wrapper'],
