@@ -1,0 +1,342 @@
+<?php
+
+/**
+ * @file
+ * Defines the inline entity form controller for Commerce Products.
+ */
+
+class CommerceProductInlineEntityFormController extends EntityInlineEntityFormController {
+
+  /**
+   * Overrides EntityInlineEntityFormController::css().
+   */
+  public function css() {
+    return array(
+      'base' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.css',
+    );
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::defaultFields().
+   */
+  public function defaultFields($bundles) {
+    $fields = array();
+    $fields['title'] = array(
+      'type' => 'extra_field',
+      'label' => t('Variation title'),
+      'visible' => TRUE,
+      'weight' => 1,
+    );
+    $fields['sku'] = array(
+      'type' => 'extra_field',
+      'label' => 'SKU',
+      'visible' => TRUE,
+      'weight' => 2,
+    );
+
+    // If only one product type is allowed, its fields can be used as columns.
+    if (count($bundles) == 1) {
+      $bundle = reset($bundles);
+
+      foreach (field_info_instances('commerce_product', $bundle) as $field_name => $instance) {
+        $field = field_info_field($field_name);
+
+        // If the product has an imagefield, show it.
+        if ($field['type'] == 'image') {
+          $fields[$field_name] = array(
+            'type' => 'field',
+            'label' => $instance['label'],
+            'formatter' => 'image',
+            'settings' => array('image_style' => 'thumbnail'),
+            'delta' => 0,
+            'visible' => TRUE,
+            'weight' => -10,
+          );
+          // Don't add any other imagefields. One is enough.
+          break;
+        }
+      }
+
+      // If the type has up to 3 attributes, show them instead of the title field.
+      $attributes = $this->attributes($bundle);
+      if (count($attributes) <= 3) {
+        $fields['title']['visible'] = FALSE;
+
+        foreach ($attributes as $field_name => $attribute) {
+          $field_type = field_info_field_types($attribute['field']['type']);
+
+          $weight = -3;
+          $fields[$field_name] = array(
+            'type' => 'field',
+            'label' => $attribute['instance']['label'],
+            'formatter' => $field_type['default_formatter'],
+            'settings' => array(),
+            'visible' => TRUE,
+            'weight' => ++$weight,
+          );
+        }
+      }
+    }
+
+    $fields['commerce_price'] = array(
+      'type' => 'field',
+      'label' => t('Price'),
+      'formatter' => 'commerce_price_formatted_amount',
+      'settings' => array(),
+      'visible' => TRUE,
+      'weight' => 99,
+    );
+
+    return $fields;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::defaultSettings().
+   */
+  public function defaultSettings() {
+    $defaults = parent::defaultSettings();
+    $defaults['autogenerate_title'] = TRUE;
+
+    return $defaults;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::settingsForm().
+   */
+  public function settingsForm($field, $instance) {
+    $form = parent::settingsForm($field, $instance);
+
+    $form['autogenerate_title'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Auto generate the product title'),
+      '#description' => t('This will hide the title input field and generate the title by appending any available attributes to the @entity title.', array('@entity' => $instance['entity_type'])),
+      '#default_value' => $this->settings['autogenerate_title'],
+    );
+
+    return $form;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::entityForm().
+   */
+  public function entityForm($entity_form, &$form_state) {
+    global $user;
+
+    $product = $entity_form['#entity'];
+    // Assign newly created products to the current user.
+    if (empty($product->product_id)) {
+      $product->uid = $user->uid;
+    }
+
+    $entity_form['product_attributes'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Attributes'),
+      '#attributes' => array('class' => array('container-inline', 'ief-product-attributes', 'ief-entity-fieldset')),
+    );
+    $entity_form['product_details'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Details'),
+      '#attributes' => array('class' => array('ief-product-details', 'ief-entity-fieldset')),
+    );
+    $entity_form['product_image'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Variation image'),
+      '#attributes' => array('class' => array('ief-product-image', 'ief-entity-fieldset')),
+    );
+
+    $language = !empty($product->language) ? $product->language : LANGUAGE_NONE;
+    $entity_form['sku'] = array(
+      '#type' => 'textfield',
+      '#title' => t('SKU'),
+      '#description' => t('Supply a unique identifier using letters, numbers, hyphens, and underscores. Commas may not be used.'),
+      '#default_value' => $product->sku,
+      '#maxlength' => 128,
+      '#required' => TRUE,
+      '#fieldset' => 'product_details',
+      '#weight' => -10,
+    );
+    $entity_form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Variation Title'),
+      '#default_value' => $product->title,
+      '#maxlength' => 128,
+      '#required' => TRUE,
+      '#fieldset' => 'product_details',
+      '#weight' => -9,
+    );
+    // Hide or disable the SKU field if it is auto-generated by Commerce AutoSKU.
+    if (module_exists('commerce_autosku') && $settings = commerce_autosku_get_settings($product)) {
+      $entity_form['sku']['#required'] = FALSE;
+      $entity_form['sku']['#disabled'] = TRUE;
+      if ($settings['advanced']['hide_sku']) {
+        $entity_form['sku']['#access'] = FALSE;
+      }
+      else {
+        $entity_form['sku']['#description'] = t('Will be auto-generated when the form is saved.');
+      }
+    }
+    // Hide the title field if it is auto-generated.
+    if ($this->settings['autogenerate_title']) {
+      $entity_form['title']['#required'] = FALSE;
+      $entity_form['title']['#access'] = FALSE;
+    }
+
+    // Attach fields.
+    field_attach_form('commerce_product', $product, $entity_form, $form_state, $language);
+
+    // Arrange attributes.
+    $attributes = $this->attributes($product->type);
+    if (empty($attributes)) {
+      // Hide the fieldset, it will be empty.
+      $entity_form['product_attributes']['#access'] = FALSE;
+    }
+    else {
+      foreach ($attributes as $field_name => $attribute) {
+        $entity_form[$field_name]['#fieldset'] = 'product_attributes';
+      }
+    }
+
+    // Arrange images and other non-attribute fields.
+    $imagefields = array();
+    foreach (field_info_instances('commerce_product', $product->type) as $name => $instance) {
+      $field_name = $instance['field_name'];
+      $field = field_info_field($field_name);
+
+      if ($field['type'] == 'image') {
+        $entity_form[$field_name]['#fieldset'] = 'product_image';
+        $imagefields[] = $field_name;
+      }
+      elseif (!isset($attributes[$field_name])) {
+        $entity_form[$field_name]['#fieldset'] = 'product_details';
+      }
+    }
+
+    if (count($imagefields) == 0) {
+      // The fieldset is empty, hide it.
+      $entity_form['product_image']['#access'] = FALSE;
+    }
+    elseif (count($imagefields) == 1) {
+      // There's only one image on the product, no need to show its title, the
+      // fieldset title is enough.
+      $field_name = reset($imagefields);
+      $language = $entity_form[$field_name]['#language'];
+      unset($entity_form[$field_name][$language][0]['#title']);
+      // Prevent multi-value imagefields from rendering their own fieldsets.
+      if (isset($entity_form[$field_name][$language]['#theme_wrappers']) && in_array('fieldset', $entity_form[$field_name][$language]['#theme_wrappers'])) {
+        $key = array_search('fieldset', $entity_form[$field_name][$language]['#theme_wrappers']);
+        unset($entity_form[$field_name][$language]['#theme_wrappers'][$key]);
+      }
+    }
+
+    return $entity_form;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::entityFormValidate().
+   */
+  public function entityFormValidate($entity_form, &$form_state) {
+    $product = $entity_form['#entity'];
+
+    $parents_path = implode('][', $entity_form['#parents']);
+    $product_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
+    $sku = trim($product_values['sku']);
+
+    // Ensure the proposed SKU is unique.
+    if (!commerce_product_validate_sku_unique($sku, $product->product_id)) {
+      form_set_error($parents_path . '][sku', t('This SKU is already in use and must be unique. Please supply another value.'));
+    }
+    // Validate the SKU for invalid characters.
+    if (!commerce_product_validate_sku($sku)) {
+      form_set_error($parents_path . '][sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
+    }
+    // Trim leading and trailing whitespace from the SKU.
+    drupal_array_set_nested_value($form_state['values'], array_merge($entity_form['#parents'], array('sku')), $sku);
+
+    field_attach_form_validate('commerce_product', $product, $entity_form, $form_state);
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::entityFormSubmit().
+   */
+  public function entityFormSubmit(&$entity_form, &$form_state) {
+    parent::entityFormSubmit($entity_form, $form_state);
+
+    $product = $entity_form['#entity'];
+    // Show a temporary message to the user for each auto-generated value.
+    if (empty($product->sku) && module_exists('commerce_autosku') && $settings = commerce_autosku_get_settings($product)) {
+      $product->sku = t('Will be auto-generated when the form is saved.');
+      $product->_remove_sku = TRUE;
+    }
+    if (empty($product->title) && $this->settings['autogenerate_title']) {
+      $product->title = t('Will be auto-generated when the form is saved.');
+    }
+  }
+
+  /**
+   * Returns a list of field names that are used as attributes for the given
+   * product type.
+   */
+  protected function attributes($type) {
+    // Attributes are tied to the commerce_cart module.
+    if (!module_exists('commerce_cart')) {
+      return array();
+    }
+
+    $attributes = array();
+    // Loop through all the field instances on that product type.
+    foreach (field_info_instances('commerce_product', $type) as $name => $instance) {
+      // A field qualifies if it is single value, required and uses a widget
+      // with a definite set of options. For the sake of simplicity, this is
+      // currently restricted to fields defined by the options module.
+      $field = field_info_field($instance['field_name']);
+
+      // Get the array of Cart settings pertaining to this instance.
+      $commerce_cart_settings = commerce_cart_field_instance_attribute_settings($instance);
+
+      // If the instance is of a field type that is eligible to function as
+      // a product attribute field and if its attribute field settings
+      // specify that this functionality is enabled...
+      if (commerce_cart_field_attribute_eligible($field) && $commerce_cart_settings['attribute_field']) {
+        $attributes[$name] = array(
+          'field' => $field,
+          'instance' => $instance,
+          'weight' => $instance['widget']['weight'],
+        );
+      }
+    }
+
+    // Sort the fields by weight.
+    uasort($attributes, 'drupal_sort_weight');
+
+    return $attributes;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::save().
+   *
+   * Autogenerates the product title if specified, and then saves the product.
+   */
+  public function save($entity, $context) {
+    // Remove the temporary message added in entityFormSubmit() so that
+    // Commerce AutoSKU can do its thing.
+    if (!empty($entity->_remove_sku)) {
+      $entity->sku = NULL;
+      unset($entity->_remove_sku);
+    }
+
+    // Generate the product title. Take the parent entity title as the base.
+    if ($this->settings['autogenerate_title']) {
+      $entity->title = entity_label($context['parent_entity_type'], $context['parent_entity']);
+      $attributes = $this->attributes($entity->type);
+      if (!empty($attributes)) {
+        $wrapper = entity_metadata_wrapper('commerce_product', $entity);
+        foreach ($attributes as $field_name => $attribute) {
+          $attribute_values[] = $wrapper->{$field_name}->label();
+        }
+        $entity->title .= ' (' . implode(', ', $attribute_values) . ')';
+      }
+    }
+
+    entity_save('commerce_product', $entity);
+  }
+}
