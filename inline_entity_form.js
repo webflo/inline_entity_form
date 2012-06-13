@@ -11,10 +11,14 @@
  */
 Drupal.behaviors.inlineEntityForm = {
   attach: function (context) {
-    $('input.ief-entity-submit', context).unbind('mousedown', Drupal.file.disableFields);
+    if (Drupal.file) {
+      $('input.ief-entity-submit', context).unbind('mousedown', Drupal.file.disableFields);
+    }
   },
   detach: function (context) {
-    $('input.form-submit', context).bind('mousedown', Drupal.file.disableFields);
+    if (Drupal.file) {
+      $('input.form-submit', context).bind('mousedown', Drupal.file.disableFields);
+    }
   }
 };
 
