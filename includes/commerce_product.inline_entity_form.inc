@@ -339,4 +339,24 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
 
     entity_save('commerce_product', $entity);
   }
+
+  /**
+   * Overrides EntityInlineEntityFormController::delete().
+   *
+   * Disables products that can't be deleted (because they are already
+   * referenced from a line item, or for some other reason), deletes the rest.
+   */
+  public function delete($ids, $context) {
+    $products = entity_load('commerce_product', $ids);
+    foreach ((array) $products as $product_id => $product) {
+      if (!commerce_product_can_delete($product)) {
+        $product->status = FALSE;
+        entity_save('commerce_product', $product);
+
+        unset($products[$product_id]);
+      }
+    }
+
+    entity_delete_multiple('commerce_product', array_keys($products));
+  }
 }
