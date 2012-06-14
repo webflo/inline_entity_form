@@ -17,6 +17,23 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
+   * Overrides EntityInlineEntityFormController::labels().
+   */
+  public function labels() {
+    $labels = parent::labels();
+
+    // Override the strings.
+    if ($this->settings['use_variation_language']) {
+      $labels = array(
+        'singular' => t('variation'),
+        'plural' => t('variations'),
+      );
+    }
+
+    return $labels;
+  }
+
+  /**
    * Overrides EntityInlineEntityFormController::defaultFields().
    */
   public function defaultFields($bundles) {
@@ -96,6 +113,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   public function defaultSettings() {
     $defaults = parent::defaultSettings();
     $defaults['autogenerate_title'] = TRUE;
+    $defaults['use_variation_language'] = FALSE;
 
     return $defaults;
   }
@@ -111,6 +129,11 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#title' => t('Auto generate the product title'),
       '#description' => t('This will hide the title input field and generate the title by appending any available attributes to the @entity title.', array('@entity' => $instance['entity_type'])),
       '#default_value' => $this->settings['autogenerate_title'],
+    );
+    $form['use_variation_language'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Refer to the referenced products as "variations"'),
+      '#default_value' => $this->settings['use_variation_language'],
     );
 
     return $form;

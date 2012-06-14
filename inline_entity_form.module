@@ -258,7 +258,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // If the reference field must always have one entity of a specific type,
   // provide a simplified widget that shows the entity form inline, without any
   // actions. Otherwise, show the full complex widget.
-  if ($field['cardinality'] == 1 && $instance['required'] && count($settings['bundles'] == 1)) {
+  if ($field['cardinality'] == 1 && $instance['required'] && count($settings['bundles']) == 1) {
     $element['form'] = array(
       '#type' => 'container',
       '#op' => 'add',
