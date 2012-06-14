@@ -216,50 +216,77 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // Add entity type specific CSS.
   _inline_entity_form_attach_css($controller->css(), $element['#attached']['css']);
 
-  if ($widget['type'] == 'inline_entity_form') {
-    $element['#element_validate'] = array('inline_entity_form_save_row_weights');
+  // Initialize the IEF array in form state.
+  if (empty($form_state['inline_entity_form'][$ief_id])) {
+    $form_state['inline_entity_form'][$ief_id] = array(
+      'form' => NULL,
+      'settings' => $settings,
+      'type_settings' => $type_settings,
+    );
 
-    // Initialize the IEF array in form state.
-    if (empty($form_state['inline_entity_form'][$ief_id])) {
-      $form_state['inline_entity_form'][$ief_id] = array(
+    // Load the entities from the $items array and store them in the form
+    // state for further manipulation.
+    $form_state['inline_entity_form'][$ief_id]['entities'] = array();
+    $entity_ids = array();
+    foreach ($items as $item) {
+      $entity_ids[] = $item[$settings['column']];
+    }
+
+    $delta = 0;
+    foreach (entity_load($settings['entity_type'], $entity_ids) as $entity) {
+      $form_state['inline_entity_form'][$ief_id]['entities'][$delta] = array(
+        'entity' => $entity,
+        'weight' => $delta,
         'form' => NULL,
-        'settings' => $settings,
-        'type_settings' => $type_settings,
+        'needs_save' => FALSE,
       );
 
-      // Load the entities from the $items array and store them in the form
-      // state for further manipulation.
-      $form_state['inline_entity_form'][$ief_id]['entities'] = array();
-      $entity_ids = array();
-      foreach ($items as $item) {
-        $entity_ids[] = $item[$settings['column']];
-      }
+      $delta++;
+    }
 
-      $delta = 0;
-      foreach (entity_load($settings['entity_type'], $entity_ids) as $entity) {
-        $form_state['inline_entity_form'][$ief_id]['entities'][$delta] = array(
-          'entity' => $entity,
-          'weight' => $delta,
-          'form' => NULL,
-          'needs_save' => FALSE,
+    // If no entities were found, try to open the add form.
+    if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+      if (count($settings['bundles']) == 1) {
+        $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
+        $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+          'bundle' => reset($settings['bundles']),
         );
-
-        $delta++;
       }
+    }
+  }
 
-      // If no entities were found, open the add form.
-      if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-        $element['#description'] = t('No @type_plural have been created.', array('@type_plural' => $labels['plural']));
-        if ($instance['required']) {
-          $element['#description'] .= ' ' . t('At least one @type_singular is required.', array('@type_singular' => $labels['singular']));
-        }
+  // If the reference field must always have one entity of a specific type,
+  // provide a simplified widget that shows the entity form inline, without any
+  // actions. Otherwise, show the full complex widget.
+  if ($field['cardinality'] == 1 && $instance['required'] && count($settings['bundles'] == 1)) {
+    $element['form'] = array(
+      '#type' => 'container',
+      '#op' => 'add',
+      // Used by Field API and controller methods to find the relevant
+      // values in $form_state.
+      '#parents' => array_merge($parents, array('form')),
+      // Pass the current entity type.
+      '#entity_type' => $settings['entity_type'],
+      // Identifies the IEF widget to which the form belongs.
+      '#ief_id' => $ief_id,
+    );
+    if (!empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+      $element['#op'] = 'edit';
+      $element['form']['entity'] = $form_state['inline_entity_form'][$ief_id]['entities'][0]['entity'];
+      $element['form']['#ief_row_delta'] = 0;
+    }
 
-        if (count($settings['bundles']) == 1) {
-          $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
-          $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-            'bundle' => reset($settings['bundles']),
-          );
-        }
+    $element['form'] = inline_entity_form_entity_form($controller, $element['form'], $form_state);
+    // Hide all actions, the widget form behaves like a part of the main form.
+    $element['form']['actions']['#access'] = FALSE;
+  }
+  else {
+    $element['#element_validate'] = array('inline_entity_form_save_row_weights');
+    // Add description text to the widget.
+    if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+      $element['#description'] = t('No @type_plural have been created.', array('@type_plural' => $labels['plural']));
+      if ($instance['required']) {
+        $element['#description'] .= ' ' . t('At least one @type_singular is required.', array('@type_singular' => $labels['singular']));
       }
     }
 
