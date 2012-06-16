@@ -33,4 +33,4 @@ $entity_info['commerce_line_item']['inline entity form'] = array(
 );
 
 The controller needs to extend EntityInlineEntityFormController and at least
-override entityForm() to provide a function entity form.
+override entityForm() to provide a functioning entity form.

@@ -206,7 +206,7 @@ class EntityInlineEntityFormController {
    * @param $form_state
    *   The form state of the parent form.
    */
-  protected function cleanupFieldFormState($entity_form, $form_state) {
+  protected function cleanupFieldFormState($entity_form, &$form_state) {
     list(, , $bundle) = entity_extract_ids($entity_form['#entity_type'], $entity_form['#entity']);
     $instances = field_info_instances($entity_form['#entity_type'], $bundle);
     foreach ($instances as $instance) {
