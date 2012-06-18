@@ -271,8 +271,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       '#ief_id' => $ief_id,
     );
     if (!empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      $element['#op'] = 'edit';
-      $element['form']['entity'] = $form_state['inline_entity_form'][$ief_id]['entities'][0]['entity'];
+      $element['form']['#op'] = 'edit';
+      $element['form']['#entity'] = $form_state['inline_entity_form'][$ief_id]['entities'][0]['entity'];
       $element['form']['#ief_row_delta'] = 0;
     }
 
