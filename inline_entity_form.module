@@ -12,12 +12,16 @@
  * Implements hook_entity_info_alter().
  */
 function inline_entity_form_entity_info_alter(&$entity_info) {
-  $entity_info['commerce_product']['inline entity form'] = array(
-    'controller' => 'CommerceProductInlineEntityFormController',
-  );
-  $entity_info['commerce_line_item']['inline entity form'] = array(
-    'controller' => 'CommerceLineItemInlineEntityFormController',
-  );
+  if (isset($entity_info['commerce_product'])) {
+    $entity_info['commerce_product']['inline entity form'] = array(
+      'controller' => 'CommerceProductInlineEntityFormController',
+    );
+  }
+  if (isset($entity_info['commerce_line_item'])) {
+    $entity_info['commerce_line_item']['inline entity form'] = array(
+      'controller' => 'CommerceLineItemInlineEntityFormController',
+    );
+  }
 }
 
 /**
