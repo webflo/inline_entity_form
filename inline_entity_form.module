@@ -929,10 +929,14 @@ function theme_inline_entity_form_entity_table($variables) {
       $row_classes[] = 'ief-row-entity-form';
     }
 
-    // Add fields that represent the entity..
+    // Add fields that represent the entity.
+    $wrapper = entity_metadata_wrapper($entity_type, $entity);
     foreach ($fields as $field_name => $field) {
-      if ($field['type'] == 'extra_field') {
-        $data = check_plain($entity->{$field_name});
+      if ($field['type'] == 'property') {
+        $property = $wrapper->{$field_name};
+        // label() returns human-readable versions of token and list properties.
+        $data = $property->label() ? $property->label() : $property->value();
+        $data = check_plain($data);
       }
       elseif ($field['type'] == 'field') {
         $settings = array(

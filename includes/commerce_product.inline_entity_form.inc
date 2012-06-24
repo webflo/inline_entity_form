@@ -39,13 +39,13 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   public function defaultFields($bundles) {
     $fields = array();
     $fields['title'] = array(
-      'type' => 'extra_field',
+      'type' => 'property',
       'label' => t('Variation title'),
       'visible' => TRUE,
       'weight' => 1,
     );
     $fields['sku'] = array(
-      'type' => 'extra_field',
+      'type' => 'property',
       'label' => 'SKU',
       'visible' => TRUE,
       'weight' => 2,

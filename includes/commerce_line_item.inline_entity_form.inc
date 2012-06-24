@@ -13,7 +13,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   public function defaultFields($bundles) {
     $fields = array();
     $fields['line_item_label'] = array(
-      'type' => 'extra_field',
+      'type' => 'property',
       'label' => t('Label'),
       'visible' => TRUE,
       'weight' => 1,
@@ -27,7 +27,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
       'weight' => 2,
     );
     $fields['quantity'] = array(
-      'type' => 'extra_field',
+      'type' => 'property',
       'label' => t('Quantity'),
       'visible' => TRUE,
       'weight' => 3,

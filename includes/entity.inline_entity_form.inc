@@ -55,7 +55,7 @@ class EntityInlineEntityFormController {
 
   /**
    * Returns an array of fields (which can be either Field API fields or
-   * properties provided through hook_field_extra_fields()) that should be
+   * properties defined through hook_entity_property_info()) that should be
    * used to represent a selected entity.
    *
    * The IEF widget can have its own fields specified in the widget settings,
@@ -66,7 +66,7 @@ class EntityInlineEntityFormController {
    *
    * @return
    *   An array of field information, keyed by field name. Allowed keys:
-   *   - type: 'field' or 'extra_field',
+   *   - type: 'field' or 'property',
    *   - label: Human readable name of the field, shown to the user.
    *   - weight: The position of the field relative to other fields.
    *   - visible: Whether the field should be displayed.
@@ -81,7 +81,7 @@ class EntityInlineEntityFormController {
     if (!empty($info['entity keys']['label'])) {
       $label_key = $info['entity keys']['label'];
       $fields[$label_key] = array(
-        'type' => 'extra_field',
+        'type' => 'property',
         'label' => t('Label'),
         'visible' => TRUE,
         'weight' => 1,
@@ -90,7 +90,7 @@ class EntityInlineEntityFormController {
     else {
       $id_key = $info['entity keys']['id'];
       $fields[$id_key] = array(
-        'type' => 'extra_field',
+        'type' => 'property',
         'label' => t('ID'),
         'visible' => TRUE,
         'weight' => 1,
