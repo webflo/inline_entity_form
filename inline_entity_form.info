@@ -5,5 +5,6 @@ dependencies[] = entity
 core = 7.x
 
 files[] = includes/entity.inline_entity_form.inc
+files[] = includes/node.inline_entity_form.inc
 files[] = includes/commerce_product.inline_entity_form.inc
 files[] = includes/commerce_line_item.inline_entity_form.inc

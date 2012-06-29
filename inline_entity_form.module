@@ -12,6 +12,10 @@
  * Implements hook_entity_info_alter().
  */
 function inline_entity_form_entity_info_alter(&$entity_info) {
+  $entity_info['node']['inline entity form'] = array(
+    'controller' => 'NodeInlineEntityFormController',
+  );
+
   if (isset($entity_info['commerce_product'])) {
     $entity_info['commerce_product']['inline entity form'] = array(
       'controller' => 'CommerceProductInlineEntityFormController',
