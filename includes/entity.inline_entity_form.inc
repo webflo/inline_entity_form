@@ -78,14 +78,13 @@ class EntityInlineEntityFormController {
   public function defaultFields($bundles) {
     $info = entity_get_info($this->entityType);
     $metadata = entity_get_property_info($this->entityType);
-    $metadata = $metadata['properties'];
 
     $fields = array();
     if (!empty($info['entity keys']['label'])) {
       $label_key = $info['entity keys']['label'];
       $fields[$label_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata[$label_key]['label'] : t('Label'),
+        'label' => $metadata ? $metadata['properties'][$label_key]['label'] : t('Label'),
         'visible' => TRUE,
         'weight' => 1,
       );
@@ -94,7 +93,7 @@ class EntityInlineEntityFormController {
       $id_key = $info['entity keys']['id'];
       $fields[$id_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata[$id_key]['label'] : t('ID'),
+        'label' => $metadata ? $metadata['properties'][$id_key]['label'] : t('ID'),
         'visible' => TRUE,
         'weight' => 1,
       );
@@ -103,7 +102,7 @@ class EntityInlineEntityFormController {
       $bundle_key = $info['entity keys']['bundle'];
       $fields[$bundle_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata[$bundle_key]['label'] : t('Type'),
+        'label' => $metadata ? $metadata['properties'][$bundle_key]['label'] : t('Type'),
         'visible' => TRUE,
         'weight' => 2,
       );
