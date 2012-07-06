@@ -81,6 +81,10 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
 
         foreach ($attributes as $field_name => $attribute) {
           $field_type = field_info_field_types($attribute['field']['type']);
+          // Override the default formatter for taxonomy_term_reference.
+          if ($field_type['default_formatter'] == 'taxonomy_term_reference_link') {
+            $field_type['default_formatter'] = 'taxonomy_term_reference_plain';
+          }
 
           $weight = -3;
           $fields[$field_name] = array(
