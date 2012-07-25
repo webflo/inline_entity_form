@@ -254,7 +254,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 
     // If no entities were found, try to open the add form.
     if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      if (count($settings['bundles']) == 1) {
+      if (count($settings['bundles']) == 1 && $instance['required']) {
         $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
         $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
           'bundle' => reset($settings['bundles']),
