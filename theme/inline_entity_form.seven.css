@@ -2,22 +2,30 @@
 .ief-row-entity-form {
   background-color: #D5E9F2 !important;
 }
-.ief-row-form {
-  border-bottom: 1px solid #ccc !important;
-}
 
-.ief-entity-fieldset {
-  border: 0 !important;
+.field-widget-inline-entity-form fieldset.form-wrapper {
+  border: 0;
 }
 .ief-entity-fieldset, .ief-entity-fieldset fieldset {
-  background-color: white !important;
+  background-color: transparent;
 }
+.ief-form > .fieldset-wrapper {
+  background: #f2f2f2;
+  border: 1px solid #ccc !important;
+}
+
+.ief-form > .fieldset-wrapper {
+  border: 1px solid #ccc !important;
+}
+
 .ief-entity-fieldset > legend span.fieldset-legend {
-  width: 99%;
-  background-color: #E7E7E7;
-  height: 25px;
-  padding: 5px 0 3px 15px;
+  border-bottom: 1px solid #E4E4E4;
+  font-weight: 600;
+  margin-top: 10px;
+  padding: 3px 0;
+  width: 100%;
 }
+
 .ief-entity-fieldset > .fieldset-wrapper {
-  margin-top: 15px;
+  margin-top: 5px;
 }

@@ -12,7 +12,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
    */
   public function css() {
     return array(
-      'base' => drupal_get_path('module', 'inline_entity_form') . '/includes/entity_types/commerce-product.css',
+      'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/commerce-product.css',
     );
   }
 

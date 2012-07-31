@@ -12,10 +12,23 @@
 }
 
 .ief-tabledrag-handle {
-  width: 20px;
   padding-right: 0;
+  width: 20px;
 }
 
 .ief-tabledrag-handle a.tabledrag-handle {
   padding-right: .5em;
+}
+
+fieldset.ief-entity-fieldset {
+  margin: 0;
+}
+
+.ief-row-form > td {
+  padding: 0;
+}
+
+.ief-row-form .ief-form-row {
+  border-bottom: 10px solid #ccc;
+  padding: 20px;
 }

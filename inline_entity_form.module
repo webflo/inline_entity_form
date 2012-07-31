@@ -290,13 +290,6 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   }
   else {
     $element['#element_validate'] = array('inline_entity_form_save_row_weights');
-    // Add description text to the widget.
-    if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      $element['#description'] = t('No @type_plural have been created.', array('@type_plural' => $labels['plural']));
-      if ($instance['required']) {
-        $element['#description'] .= ' ' . t('At least one @type_singular is required.', array('@type_singular' => $labels['singular']));
-      }
-    }
 
     $element['entities'] = array(
       '#tree' => TRUE,
@@ -329,7 +322,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         );
         $element['entities'][$key]['form'] = array(
           '#type' => 'container',
-          '#attributes' => array('class' => array('inline-entity-form-title')),
+          '#attributes' => array('class' => array('ief-form', 'ief-form-row')),
           '#op' => $value['form'],
           // Used by Field API and controller methods to find the relevant
           // values in $form_state.
@@ -441,6 +434,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       // There's a form open, show it.
       $element['form'] = array(
         '#type' => 'fieldset',
+        '#attributes' => array('class' => array('ief-form', 'ief-form-bottom')),
         // Identifies the IEF widget to which the form belongs.
         '#ief_id' => $ief_id,
         // Used by Field API and controller methods to find the relevant
@@ -459,6 +453,12 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         if ($instance['required'] && empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
+      }
+
+      // No entities have been added. Remove the outer fieldset to reduce
+      // visual noise caused by having two titles.
+      if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+        $element['#type'] = 'container';
       }
     }
   }
