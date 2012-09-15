@@ -1004,7 +1004,11 @@ function theme_inline_entity_form_entity_table($variables) {
     }
 
     // Return the themed table.
-    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => array('id' => $id)));
+    $table_attributes = array(
+      'id' => $id,
+      'class' => 'ief-entity-table',
+    );
+    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => $table_attributes));
   }
 }
 
