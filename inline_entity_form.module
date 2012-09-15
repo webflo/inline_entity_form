@@ -982,13 +982,14 @@ function theme_inline_entity_form_entity_table($variables) {
   }
 
   if (!empty($rows)) {
+    $id = 'ief-entity-table-' . $form['#id'];
     if ($has_tabledrag) {
       // Add the tabledrag JavaScript.
-      drupal_add_tabledrag('ief-entity-table', 'order', 'sibling', 'ief-entity-delta');
+      drupal_add_tabledrag($id, 'order', 'sibling', 'ief-entity-delta');
     }
 
     // Return the themed table.
-    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => array('id' => 'ief-entity-table')));
+    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => array('id' => $id)));
   }
 }
 
