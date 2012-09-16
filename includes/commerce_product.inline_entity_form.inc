@@ -149,6 +149,9 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   public function entityForm($entity_form, &$form_state) {
     global $user;
 
+    // Get the labels (product / variation).
+    $labels = $this->labels();
+
     $product = $entity_form['#entity'];
     // Assign newly created products to the current user.
     if (empty($product->product_id)) {
@@ -167,7 +170,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     );
     $entity_form['product_image'] = array(
       '#type' => 'fieldset',
-      '#title' => t('Variation image'),
+      '#title' => t('@label image', array('@label' => drupal_ucfirst($labels['singular']))),
       '#attributes' => array('class' => array('ief-product-image', 'ief-entity-fieldset')),
     );
 
@@ -184,7 +187,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     );
     $entity_form['title'] = array(
       '#type' => 'textfield',
-      '#title' => t('Variation Title'),
+      '#title' => t('@label title', array('@label' => drupal_ucfirst($labels['singular']))),
       '#default_value' => $product->title,
       '#maxlength' => 128,
       '#required' => TRUE,
