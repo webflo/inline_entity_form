@@ -331,6 +331,10 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // provide a simplified widget that shows the entity form inline, without any
   // actions. Otherwise, show the full complex widget.
   if ($cardinality == 1 && $instance['required'] && count($settings['bundles']) == 1) {
+    $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+      'bundle' => reset($settings['bundles']),
+    );
+
     $element['form'] = array(
       '#type' => 'container',
       '#op' => 'add',
