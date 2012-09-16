@@ -115,7 +115,11 @@ class EntityInlineEntityFormController {
    * Returns an array of default settings in the form of key => value.
    */
   public function defaultSettings() {
-    return array();
+    $defaults = array();
+    $defaults['allow_existing'] = FALSE;
+    $defaults['match_operator'] = 'CONTAINS';
+
+    return $defaults;
   }
 
   /**
@@ -129,7 +133,33 @@ class EntityInlineEntityFormController {
    * @param $instance
    *   The definition of the reference field instance.
    */
-  public function settingsForm($field, $instance) {}
+  public function settingsForm($field, $instance) {
+    $labels = $this->labels();
+
+    $form = array();
+    $form['allow_existing'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Allow users to add existing @label.', array('@label' => $labels['plural'])),
+      '#default_value' => $this->settings['allow_existing'],
+    );
+    $form['match_operator'] = array(
+      '#type' => 'select',
+      '#title' => t('Autocomplete matching'),
+      '#default_value' => $this->settings['match_operator'],
+      '#options' => array(
+        'STARTS_WITH' => t('Starts with'),
+        'CONTAINS' => t('Contains'),
+      ),
+      '#description' => t('Select the method used to collect autocomplete suggestions. Note that <em>Contains</em> can cause performance issues on sites with thousands of nodes.'),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="instance[widget][settings][type_settings][allow_existing]"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    return $form;
+  }
 
   /**
    * Returns the entity form to be shown through the IEF widget.

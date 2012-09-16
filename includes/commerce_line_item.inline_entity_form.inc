@@ -45,6 +45,32 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
+   * Overrides EntityInlineEntityFormController::defaultSettings().
+   */
+  public function defaultSettings() {
+    $defaults = parent::defaultSettings();
+
+    // Adding existing entities is not supported for line items.
+    unset($defaults['allow_existing']);
+    unset($defaults['match_operator']);
+
+    return $defaults;
+  }
+
+  /**
+   * Overrides EntityInlineEntityFormController::settingsForm().
+   */
+  public function settingsForm($field, $instance) {
+    $form = parent::settingsForm($field, $instance);
+
+    // Adding existing entities is not supported for line items.
+    unset($form['allow_existing']);
+    unset($form['match_operator']);
+
+    return $form;
+  }
+
+  /**
    * Overrides EntityInlineEntityFormController::entityForm().
    */
   public function entityForm($entity_form, &$form_state) {
