@@ -32,19 +32,15 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   $field = field_info_field($field_name);
   $instance = field_info_instance($entity_type, $field_name, $bundle);
   $settings = inline_entity_form_settings($field, $instance);
-  $entity_info = entity_get_info($settings['entity_type']);
-  $type_settings = $instance['widget']['settings']['type_settings'];
+  $controller = inline_entity_form_get_controller($instance);
   // The current entity type is not supported, or the string is empty.
-  if (!$field || !$instance || !isset($entity_info['inline entity form']) || empty($string)) {
+  if (!$field || !$instance || !$controller || empty($string)) {
     return MENU_ACCESS_DENIED;
   }
 
-  // Instantiate the inline entity form controller for the current entity type.
-  $controller = new $entity_info['inline entity form']['controller']($settings['entity_type'], $type_settings);
-
   $matches = array();
   if ($field['type'] == 'commerce_product_reference') {
-    $match_operator = strtolower($type_settings['match_operator']);
+    $match_operator = strtolower($controller->settings['match_operator']);
     $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10);
 
     // Loop through the products and convert them into autocomplete output.
@@ -54,7 +50,7 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   }
   elseif ($field['type'] == 'entityreference') {
     $handler = entityreference_get_selection_handler($field, $instance, $settings['entity_type']);
-    $entity_labels = $handler->getReferencableEntities($string, $type_settings['match_operator'], 10);
+    $entity_labels = $handler->getReferencableEntities($string, $controller->settings['match_operator'], 10);
 
     foreach ($entity_labels as $entity_id => $label) {
       // entityreference has already check_plain-ed the title.
@@ -70,6 +66,28 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   }
 
   drupal_json_output($matches);
+}
+
+/**
+ * Returns the Inline Entity Form controller for the passed-in reference field.
+ *
+ * @param $instance
+ *   The instance array of the reference field.
+ *
+ * @return
+ *   An instantiated controller object, or FALSE if none found.
+ */
+function inline_entity_form_get_controller($instance) {
+  $field = field_info_field($instance['field_name']);
+  $type_settings = $instance['widget']['settings']['type_settings'];
+  $ief_settings = inline_entity_form_settings($field, $instance);
+  $entity_info = entity_get_info($ief_settings['entity_type']);
+  // The current entity type is not supported, execution can't continue.
+  if (!isset($entity_info['inline entity form'])) {
+    return FALSE;
+  }
+
+  return new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
 }
 
 /**
@@ -107,18 +125,13 @@ function inline_entity_form_entity_delete($entity, $type) {
   list(,, $bundle) = entity_extract_ids($type, $entity);
   foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
     if ($instance['widget']['type'] == 'inline_entity_form') {
-      $field = field_info_field($field_name);
-      $type_settings = $instance['widget']['settings']['type_settings'];
-      $ief_settings = inline_entity_form_settings($field, $instance);
-      $entity_info = entity_get_info($ief_settings['entity_type']);
-      $controller = new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
-      // The current entity type is not supported, execution can't continue.
-      if (!isset($entity_info['inline entity form'])) {
-        return array();
-      }
+      $controller = inline_entity_form_get_controller($instance);
 
       // The controller specified that referenced entities should be deleted.
-      if (!empty($controller->settings['delete_references'])) {
+      if ($controller && !empty($controller->settings['delete_references'])) {
+        $field = field_info_field($field_name);
+        $ief_settings = inline_entity_form_settings($field, $instance);
+
         $items = field_get_items($type, $entity, $field_name);
         $ids = array();
         foreach ($items as $item) {
@@ -199,10 +212,9 @@ function inline_entity_form_field_widget_info() {
 function inline_entity_form_field_widget_settings_form($field, $instance) {
   $widget = $instance['widget'];
   $settings = $widget['settings'];
-  $ief_settings = inline_entity_form_settings($field, $instance);
-  $entity_info = entity_get_info($ief_settings['entity_type']);
+  $controller = inline_entity_form_get_controller($instance);
   // The current entity type is not supported, execution can't continue.
-  if (!isset($entity_info['inline entity form'])) {
+  if (!$controller) {
     return array();
   }
 
@@ -214,7 +226,6 @@ function inline_entity_form_field_widget_settings_form($field, $instance) {
   );
 
   // Add entity type specific settings if they exist.
-  $controller = new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $settings['type_settings']);
   $settings_form = $controller->settingsForm($field, $instance);
   if (!empty($settings_form)) {
     $element['type_settings'] = array(
@@ -287,15 +298,13 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   $widget = $instance['widget'];
   $settings = inline_entity_form_settings($field, $instance);
   $entity_info = entity_get_info($settings['entity_type']);
-  $type_settings = $widget['settings']['type_settings'];
   $cardinality = $field['cardinality'];
+  $controller = inline_entity_form_get_controller($instance);
   // The current entity type is not supported, execution can't continue.
-  if (!isset($entity_info['inline entity form'])) {
+  if (!$controller) {
     return array();
   }
 
-  // Instantiate the inline entity form controller for the current entity type.
-  $controller = new $entity_info['inline entity form']['controller']($settings['entity_type'], $type_settings);
   // Get the entity type labels for the UI strings.
   $labels = $controller->labels();
 
@@ -341,7 +350,6 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     $form_state['inline_entity_form'][$ief_id] = array(
       'form' => NULL,
       'settings' => $settings,
-      'type_settings' => $type_settings,
       'instance' => $instance,
     );
 
@@ -513,7 +521,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
     if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      if (count($settings['bundles']) == 1 && $instance['required'] && empty($type_settings['allow_existing'])) {
+      if (count($settings['bundles']) == 1 && $instance['required'] && empty($controller->settings['allow_existing'])) {
         $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
         $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
           'bundle' => reset($settings['bundles']),
@@ -563,7 +571,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#ief_form' => 'add',
       );
 
-      if (!empty($type_settings['allow_existing'])) {
+      if (!empty($controller->settings['allow_existing'])) {
         $element['actions']['ief_add_existing'] = array(
           '#type' => 'submit',
           '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
@@ -598,7 +606,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
-        if (empty($type_settings['allow_existing']) && $instance['required']
+        if (empty($controller->settings['allow_existing']) && $instance['required']
           && empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
@@ -722,13 +730,10 @@ function inline_entity_form_process_entity_form(&$entity_form, &$form_state) {
     return;
   }
 
-  $entity_type = $entity_form['#entity_type'];
-  $entity_info = entity_get_info($entity_type);
   $ief_id = $entity_form['#ief_id'];
-  $type_settings = $form_state['inline_entity_form'][$ief_id]['type_settings'];
-
+  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
   // Instantiate the controller and validate the form.
-  $controller = new $entity_info['inline entity form']['controller']($entity_type, $type_settings);
+  $controller = inline_entity_form_get_controller($instance);
   $controller->entityFormValidate($entity_form, $form_state);
 
   // If validation passed, execute the submission handler.
@@ -858,9 +863,8 @@ function inline_entity_form_process_reference_form(&$reference_form, &$form_stat
   $parents_path = implode('][', $reference_form['#parents']);
 
   // Instantiate controller to access labels
-  $entity_info = entity_get_info($entity_type);
-  $type_settings = $form_state['inline_entity_form'][$ief_id]['type_settings'];
-  $controller = new $entity_info['inline entity form']['controller']($entity_type, $type_settings);
+  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
+  $controller = inline_entity_form_get_controller($instance);
   $labels = $controller->labels();
 
   $form_values = drupal_array_get_nested_value($form_state['values'], $reference_form['#parents']);
@@ -1093,8 +1097,7 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
 
       $values = $form_state['inline_entity_form'][$ief_id];
       $entity_type = $values['settings']['entity_type'];
-      $entity_info = entity_get_info($entity_type);
-      $controller = new $entity_info['inline entity form']['controller']($entity_type, $values['type_settings']);
+      $controller = inline_entity_form_get_controller($instance);
       $context = array(
         'parent_entity_type' => $parent_entity_type,
         'parent_entity' => $parent_entity,
