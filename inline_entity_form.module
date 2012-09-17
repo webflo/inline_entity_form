@@ -96,6 +96,46 @@ function inline_entity_form_entity_info_alter(&$entity_info) {
 }
 
 /**
+ * Implements hook_entity_delete().
+ *
+ * Deletes referenced entities if needed.
+ *
+ * @todo Remove when there's a stable contrib module for this.
+ */
+function inline_entity_form_entity_delete($entity, $type) {
+  $entity_info = entity_get_info($type);
+  list(,, $bundle) = entity_extract_ids($type, $entity);
+  foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
+    if ($instance['widget']['type'] == 'inline_entity_form') {
+      $field = field_info_field($field_name);
+      $type_settings = $instance['widget']['settings']['type_settings'];
+      $ief_settings = inline_entity_form_settings($field, $instance);
+      $entity_info = entity_get_info($ief_settings['entity_type']);
+      $controller = new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
+      // The current entity type is not supported, execution can't continue.
+      if (!isset($entity_info['inline entity form'])) {
+        return array();
+      }
+
+      // The controller specified that referenced entities should be deleted.
+      if (!empty($controller->settings['delete_references'])) {
+        $items = field_get_items($type, $entity, $field_name);
+        $ids = array();
+        foreach ($items as $item) {
+          $ids[] = $item[$ief_settings['column']];
+        }
+        $context = array(
+          'parent_entity_type' => $type,
+          'parent_entity' => $entity,
+        );
+
+        $controller->delete($ids, $context);
+      }
+    }
+  }
+}
+
+/**
  * Attaches theme specific CSS files.
  *
  * @param $theme_css

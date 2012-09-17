@@ -54,6 +54,10 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     unset($defaults['allow_existing']);
     unset($defaults['match_operator']);
 
+    // Line items should always be deleted when the order is deleted, they
+    // are never managed alone.
+    $defaults['delete_references'] = TRUE;
+
     return $defaults;
   }
 

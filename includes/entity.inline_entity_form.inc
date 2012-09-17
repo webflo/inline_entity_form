@@ -8,7 +8,7 @@
 class EntityInlineEntityFormController {
 
   protected $entityType;
-  protected $settings;
+  public $settings;
 
   public function __construct($entityType, array $settings) {
     $this->entityType = $entityType;
@@ -118,6 +118,7 @@ class EntityInlineEntityFormController {
     $defaults = array();
     $defaults['allow_existing'] = FALSE;
     $defaults['match_operator'] = 'CONTAINS';
+    $defaults['delete_references'] = FALSE;
 
     return $defaults;
   }
@@ -156,6 +157,11 @@ class EntityInlineEntityFormController {
           ':input[name="instance[widget][settings][type_settings][allow_existing]"]' => array('checked' => TRUE),
         ),
       ),
+    );
+    $form['delete_references'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Delete referenced @label when the parent entity is deleted.', array('@label' => $labels['plural'])),
+      '#default_value' => $this->settings['delete_references'],
     );
 
     return $form;
