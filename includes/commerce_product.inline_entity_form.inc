@@ -283,14 +283,18 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     $product_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
     $sku = trim($product_values['sku']);
 
-    // Ensure the proposed SKU is unique.
-    if (!commerce_product_validate_sku_unique($sku, $product->product_id)) {
-      form_set_error($parents_path . '][sku', t('This SKU is already in use and must be unique. Please supply another value.'));
+    // If the SKU field is enabled, validate it.
+    if (empty($entity_form['sku']['#disabled'])) {
+      // Ensure the proposed SKU is unique.
+      if (!commerce_product_validate_sku_unique($sku, $product->product_id)) {
+        form_set_error($parents_path . '][sku', t('This SKU is already in use and must be unique. Please supply another value.'));
+      }
+      // Validate the SKU for invalid characters.
+      if (!commerce_product_validate_sku($sku)) {
+        form_set_error($parents_path . '][sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
+      }
     }
-    // Validate the SKU for invalid characters.
-    if (!commerce_product_validate_sku($sku)) {
-      form_set_error($parents_path . '][sku', t('The SKU %sku contains invalid characters.', array('%sku' => $sku)));
-    }
+
     // Trim leading and trailing whitespace from the SKU.
     drupal_array_set_nested_value($form_state['values'], array_merge($entity_form['#parents'], array('sku')), $sku);
 
