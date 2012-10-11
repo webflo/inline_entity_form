@@ -131,20 +131,22 @@ function inline_entity_form_entity_delete($entity, $type) {
 
       // The controller specified that referenced entities should be deleted.
       if ($controller && !empty($controller->settings['delete_references'])) {
-        $field = field_info_field($field_name);
-        $ief_settings = inline_entity_form_settings($field, $instance);
-
         $items = field_get_items($type, $entity, $field_name);
-        $ids = array();
-        foreach ($items as $item) {
-          $ids[] = $item[$ief_settings['column']];
-        }
-        $context = array(
-          'parent_entity_type' => $type,
-          'parent_entity' => $entity,
-        );
+        if ($items) {
+          $field = field_info_field($field_name);
+          $ief_settings = inline_entity_form_settings($field, $instance);
 
-        $controller->delete($ids, $context);
+          $ids = array();
+          foreach ($items as $item) {
+            $ids[] = $item[$ief_settings['column']];
+          }
+          $context = array(
+            'parent_entity_type' => $type,
+            'parent_entity' => $entity,
+          );
+
+          $controller->delete($ids, $context);
+        }
       }
     }
   }
