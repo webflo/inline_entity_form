@@ -107,6 +107,12 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       'visible' => TRUE,
       'weight' => 99,
     );
+    $fields['status'] = array(
+      'type' => 'property',
+      'label' => t('Status'),
+      'visible' => TRUE,
+      'weight' => 100,
+    );
 
     return $fields;
   }
@@ -195,6 +201,15 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#fieldset' => 'product_details',
       // The label might be missing if the Title module has replaced it.
       '#weight' => !empty($extra_fields['title']) ? $extra_fields['title']['weight'] : -9,
+    );
+    $entity_form['status'] = array(
+      '#type' => 'radios',
+      '#title' => t('Status'),
+      '#default_value' => $product->status,
+      '#options' => array(1 => t('Active'), 0 => t('Disabled')),
+      '#required' => TRUE,
+      '#fieldset' => 'product_details',
+      '#weight' => $extra_fields['status']['weight'],
     );
 
     // Attach fields.

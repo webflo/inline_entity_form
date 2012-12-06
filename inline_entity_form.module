@@ -119,6 +119,30 @@ function inline_entity_form_entity_info_alter(&$entity_info) {
 }
 
 /**
+ * Implements hook_entity_property_info_alter().
+ *
+ * @todo Remove once Commerce 1.5 gets released with #1860248 committed.
+ */
+function inline_entity_form_entity_property_info_alter(&$info) {
+  if (!empty($info['commerce_product'])) {
+    $properties = &$info['commerce_product']['properties'];
+    $properties['status']['options list'] = 'inline_entity_form_product_status_options_list';
+  }
+}
+
+/**
+ * Returns the options list for the product status property.
+ *
+ * @todo Remove once Commerce 1.5 gets released with #1860248 committed.
+ */
+function inline_entity_form_product_status_options_list() {
+  return array(
+    0 => t('Disabled'),
+    1 => t('Active'),
+  );
+}
+
+/**
  * Implements hook_entity_delete().
  *
  * Deletes referenced entities if needed.
