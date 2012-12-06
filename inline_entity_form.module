@@ -52,9 +52,12 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
     $handler = entityreference_get_selection_handler($field, $instance, $settings['entity_type']);
     $entity_labels = $handler->getReferencableEntities($string, $controller->settings['match_operator'], 10);
 
-    foreach ($entity_labels as $entity_id => $label) {
-      // entityreference has already check_plain-ed the title.
-      $results[] = t('!label (!entity_id)', array('!label' => $label, '!entity_id' => $entity_id));
+    foreach ($entity_labels as $bundle => $labels) {
+      // Loop through each entity type, and autocomplete with its titles.
+      foreach ($labels as $entity_id => $label) {
+        // entityreference has already check_plain-ed the title.
+        $results[] = t('!label (!entity_id)', array('!label' => $label, '!entity_id' => $entity_id));
+      }
     }
   }
 
