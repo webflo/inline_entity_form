@@ -112,6 +112,19 @@ class EntityInlineEntityFormController {
   }
 
   /**
+   * Returns a setting value.
+   *
+   * @param $name
+   *   The name of the setting value to return.
+   *
+   * @return
+   *   A setting value.
+   */
+  public function getSetting($name) {
+    return $this->settings[$name];
+  }
+
+  /**
    * Returns an array of default settings in the form of key => value.
    */
   public function defaultSettings() {
@@ -165,6 +178,16 @@ class EntityInlineEntityFormController {
     );
 
     return $form;
+  }
+
+  /**
+   * Returns the entity type managed by this controller.
+   *
+   * @return
+   *   The entity type.
+   */
+  public function entityType() {
+    return $this->entityType;
   }
 
   /**

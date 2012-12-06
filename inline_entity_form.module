@@ -40,7 +40,7 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
 
   $matches = array();
   if ($field['type'] == 'commerce_product_reference') {
-    $match_operator = strtolower($controller->settings['match_operator']);
+    $match_operator = strtolower($controller->getSetting('match_operator'));
     $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10);
 
     // Loop through the products and convert them into autocomplete output.
@@ -50,7 +50,7 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   }
   elseif ($field['type'] == 'entityreference') {
     $handler = entityreference_get_selection_handler($field, $instance, $settings['entity_type']);
-    $entity_labels = $handler->getReferencableEntities($string, $controller->settings['match_operator'], 10);
+    $entity_labels = $handler->getReferencableEntities($string, $controller->getSetting('match_operator'), 10);
 
     foreach ($entity_labels as $bundle => $labels) {
       // Loop through each entity type, and autocomplete with its titles.
@@ -133,7 +133,7 @@ function inline_entity_form_entity_delete($entity, $type) {
       $controller = inline_entity_form_get_controller($instance);
 
       // The controller specified that referenced entities should be deleted.
-      if ($controller && !empty($controller->settings['delete_references'])) {
+      if ($controller && $controller->getSetting('delete_references')) {
         $items = field_get_items($type, $entity, $field_name);
         if ($items) {
           $field = field_info_field($field_name);
@@ -247,6 +247,7 @@ function inline_entity_form_field_widget_settings_form($field, $instance) {
   // Add entity type specific settings if they exist.
   $settings_form = $controller->settingsForm($field, $instance);
   if (!empty($settings_form)) {
+    $entity_info = entity_get_info($controller->entityType());
     $element['type_settings'] = array(
       '#type' => 'fieldset',
       '#title' => t('Inline Entity Form: %type', array('%type' => $entity_info['label'])),
@@ -541,7 +542,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
     if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      if (count($settings['bundles']) == 1 && $instance['required'] && empty($controller->settings['allow_existing'])) {
+      if (count($settings['bundles']) == 1 && $instance['required'] && !$controller->getSetting('allow_existing')) {
         $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
         $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
           'bundle' => reset($settings['bundles']),
@@ -591,7 +592,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#ief_form' => 'add',
       );
 
-      if (!empty($controller->settings['allow_existing'])) {
+      if ($controller->getSetting('allow_existing')) {
         $element['actions']['ief_add_existing'] = array(
           '#type' => 'submit',
           '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
@@ -626,7 +627,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
-        if (empty($controller->settings['allow_existing']) && $instance['required']
+        if (!$controller->getSetting('allow_existing') && $instance['required']
           && empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
