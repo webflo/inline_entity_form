@@ -55,6 +55,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
    */
   public function entityForm($entity_form, &$form_state) {
     $term = $entity_form['#entity'];
+    $extra_fields = field_info_extra_fields('taxonomy_term', $term->vocabulary_machine_name, 'form');
 
     $defaults = array(
       'name' => '',
@@ -75,14 +76,15 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
       '#default_value' => $term->name,
       '#maxlength' => 255,
       '#required' => TRUE,
-      '#weight' => -5,
+      // The label might be missing if the Title module has replaced it.
+      '#weight' => !empty($extra_fields['name']) ? $extra_fields['name']['weight'] : -5,
     );
     $entity_form['description'] = array(
       '#type' => 'text_format',
       '#title' => t('Description'),
       '#default_value' => $term->description,
       '#format' => $term->format,
-      '#weight' => 0,
+      '#weight' => $extra_fields['description']['weight'],
     );
 
     field_attach_form('taxonomy_term', $term, $entity_form, $form_state, LANGUAGE_NONE);

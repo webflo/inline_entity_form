@@ -79,6 +79,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
    */
   public function entityForm($entity_form, &$form_state) {
     $line_item = $entity_form['#entity'];
+    $extra_fields = field_info_extra_fields('commerce_line_item', $line_item->type, 'form');
 
     $entity_form['line_item_details'] = array(
       '#type' => 'fieldset',
@@ -92,7 +93,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
       '#default_value' => $line_item->line_item_label,
       '#maxlength' => 128,
       '#required' => TRUE,
-      '#weight' => -10,
+      '#weight' => $extra_fields['label']['weight'],
       '#fieldset' => 'line_item_details',
     );
     $entity_form['quantity'] = array(
@@ -104,6 +105,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
       '#size' => 4,
       '#maxlength' => max(4, strlen($line_item->quantity)),
       '#required' => TRUE,
+      '#weight' => $extra_fields['label']['weight'],
       '#fieldset' => 'line_item_details',
     );
     field_attach_form('commerce_line_item', $line_item, $entity_form, $form_state, LANGUAGE_NONE);

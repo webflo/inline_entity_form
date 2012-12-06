@@ -24,6 +24,7 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
   public function entityForm($entity_form, &$form_state) {
     $node = $entity_form['#entity'];
     $type = node_type_get_type($node);
+    $extra_fields = field_info_extra_fields('node', $node->type, 'form');
 
     // Do some prep work on the node, similarly to node_form().
     if (!isset($node->title)) {
@@ -37,7 +38,8 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
       '#required' => TRUE,
       '#default_value' => $node->title,
       '#maxlength' => 255,
-      '#weight' => -5,
+      // The label might be missing if the Title module has replaced it.
+      '#weight' => !empty($extra_fields['title']) ? $extra_fields['title']['weight'] : -5,
     );
 
     field_attach_form('node', $node, $entity_form, $form_state, LANGUAGE_NONE);

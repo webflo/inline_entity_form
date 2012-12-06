@@ -153,6 +153,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     $labels = $this->labels();
 
     $product = $entity_form['#entity'];
+    $extra_fields = field_info_extra_fields('commerce_product', $product->type, 'form');
     // Assign newly created products to the current user.
     if (empty($product->product_id)) {
       $product->uid = $user->uid;
@@ -183,7 +184,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#maxlength' => 128,
       '#required' => TRUE,
       '#fieldset' => 'product_details',
-      '#weight' => -10,
+      '#weight' => $extra_fields['sku']['weight'],
     );
     $entity_form['title'] = array(
       '#type' => 'textfield',
@@ -192,7 +193,8 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#maxlength' => 128,
       '#required' => TRUE,
       '#fieldset' => 'product_details',
-      '#weight' => -9,
+      // The label might be missing if the Title module has replaced it.
+      '#weight' => !empty($extra_fields['title']) ? $extra_fields['title']['weight'] : -9,
     );
 
     // Attach fields.
