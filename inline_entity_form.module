@@ -126,7 +126,7 @@ function inline_entity_form_entity_delete($entity, $type) {
   $entity_info = entity_get_info($type);
   list(,, $bundle) = entity_extract_ids($type, $entity);
   foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
-    if ($instance['widget']['type'] == 'inline_entity_form') {
+    if (strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
       $controller = inline_entity_form_get_controller($instance);
 
       // The controller specified that referenced entities should be deleted.
@@ -194,8 +194,20 @@ function inline_entity_form_theme() {
 function inline_entity_form_field_widget_info() {
   $widgets = array();
 
+  $widgets['inline_entity_form_single'] = array(
+    'label' => t('Inline entity form - Single value'),
+    'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
+    'settings' => array(
+      'fields' => array(),
+      'type_settings' => array(),
+    ),
+    'behaviors' => array(
+      'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      'default value' => FIELD_BEHAVIOR_NONE,
+    ),
+  );
   $widgets['inline_entity_form'] = array(
-    'label' => t('Inline entity form'),
+    'label' => t('Inline entity form - Multiple values'),
     'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
     'settings' => array(
       'fields' => array(),
@@ -379,10 +391,10 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     }
   }
 
-  // If the reference field must always have one entity of a specific type,
-  // provide a simplified widget that shows the entity form inline, without any
-  // actions. Otherwise, show the full complex widget.
-  if ($cardinality == 1 && $instance['required'] && count($settings['bundles']) == 1) {
+  // Build the appropriate widget.
+  // The "Single value" widget assumes it is operating on a required single
+  // value reference field with 1 allowed bundle.
+  if ($widget['type'] == 'inline_entity_form_single') {
     $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
       'bundle' => reset($settings['bundles']),
     );
@@ -409,6 +421,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     $element['form']['actions']['#access'] = FALSE;
   }
   else {
+    // Build the "Multiple value" widget.
     $element['#element_validate'] = array('inline_entity_form_save_row_weights');
 
     $element['entities'] = array(
@@ -1090,7 +1103,7 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
   list(, , $bundle_name) = entity_extract_ids($parent_entity_type, $parent_entity);
 
   foreach (field_info_instances($parent_entity_type, $bundle_name) as $instance_name => $instance) {
-    if (isset($instance['widget']) && $instance['widget']['type'] == 'inline_entity_form') {
+    if (isset($instance['widget']) && strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
       $field_name = $instance['field_name'];
       $langcode = $form[$field_name]['#language'];
       $ief_id = $instance['id'];
