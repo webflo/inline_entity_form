@@ -159,6 +159,9 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
 
     field_attach_submit('commerce_line_item', $line_item, $entity_form, $form_state);
 
+    // Update the total price.
+    commerce_line_item_rebase_unit_price($line_item);
+
     // Product line item types by default get the product SKU as the label.
     if (empty($line_item->line_item_id) && in_array($line_item->type, commerce_product_line_item_types())) {
       $product = commerce_product_load($line_item->commerce_product[LANGUAGE_NONE][0]['product_id']);
