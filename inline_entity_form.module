@@ -412,7 +412,6 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         'weight' => $delta,
         'form' => NULL,
         'needs_save' => FALSE,
-        'referenced' => FALSE,
       );
 
       $delta++;
@@ -503,8 +502,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         if ($value['form'] == 'edit') {
           $form += inline_entity_form_entity_form($controller, $form, $form_state);
         }
-        elseif ($value['form'] == 'delete') {
-          $form += inline_entity_form_delete_form($controller, $form, $form_state);
+        elseif ($value['form'] == 'remove') {
+          $form += inline_entity_form_remove_form($controller, $form, $form_state);
         }
       }
       else {
@@ -533,10 +532,10 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           '#ief_row_delta' => $key,
           '#ief_row_form' => 'edit',
         );
-        $row['actions']['ief_entity_delete'] = array(
+        $row['actions']['ief_entity_remove'] = array(
           '#type' => 'submit',
-          '#value' => t('Delete'),
-          '#name' => 'ief-' . $ief_id . '-entity-delete-' . $key,
+          '#value' => t('Remove'),
+          '#name' => 'ief-' . $ief_id . '-entity-remove-' . $key,
           '#limit_validation_errors' => array(),
           '#ajax' => array(
             'callback' => 'inline_entity_form_get_element',
@@ -544,7 +543,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           ),
           '#submit' => array('inline_entity_form_open_row_form'),
           '#ief_row_delta' => $key,
-          '#ief_row_form' => 'delete',
+          '#ief_row_form' => 'remove',
         );
       }
     }
@@ -798,7 +797,6 @@ function inline_entity_form_process_entity_form(&$entity_form, &$form_state) {
         'weight' => $weight,
         'form' => NULL,
         'needs_save' => TRUE,
-        'referenced' => FALSE,
       );
     }
     else {
@@ -941,61 +939,60 @@ function inline_entity_form_process_reference_form(&$reference_form, &$form_stat
       'weight' => $weight,
       'form' => NULL,
       'needs_save' => FALSE,
-      'referenced' => TRUE,
     );
   }
 }
 
 /**
- * Wraps and returns the delete form provided by the passed-in controller.
+ * Wraps and returns the remove form provided by the passed-in controller.
  *
  * @param $controller
  *   The inline entity form controller.
- * @param $delete_form
+ * @param $remove_form
  *   The form array that will receive the entity form.
  * @param $form_state
  *   The form state of the parent form.
  *
  * @return
- *   The form array containing the embedded delete form.
+ *   The form array containing the embedded remove form.
  */
-function inline_entity_form_delete_form($controller, $delete_form, &$form_state) {
+function inline_entity_form_remove_form($controller, $remove_form, &$form_state) {
   // Build a deta suffix that's appended to button #name keys for uniqueness.
-  $delta = $delete_form['#ief_id'] . '-' . $delete_form['#ief_row_delta'];
+  $delta = $remove_form['#ief_id'] . '-' . $remove_form['#ief_row_delta'];
 
   // Retrieve the form provided by the controller.
-  $delete_form = $controller->deleteForm($delete_form, $form_state);
+  $remove_form = $controller->removeForm($remove_form, $form_state);
   // Add the actions
-  $delete_form['actions'] = array(
+  $remove_form['actions'] = array(
     '#type' => 'container',
     '#weight' => 100,
   );
-  $delete_form['actions']['ief_delete_confirm'] = array(
+  $remove_form['actions']['ief_remove_confirm'] = array(
     '#type' => 'submit',
-    '#value' => t('Delete'),
-    '#name' => 'ief-delete-confirm-' . $delta,
+    '#value' => t('Remove'),
+    '#name' => 'ief-remove-confirm-' . $delta,
     '#limit_validation_errors' => array(),
     '#ajax' => array(
       'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $delete_form['#ief_id'],
+      'wrapper' => 'inline-entity-form-' . $remove_form['#ief_id'],
     ),
-    '#submit' => array('inline_entity_form_delete_confirm'),
-    '#ief_row_delta' => $delete_form['#ief_row_delta'],
+    '#submit' => array('inline_entity_form_remove_confirm'),
+    '#ief_row_delta' => $remove_form['#ief_row_delta'],
   );
-  $delete_form['actions']['ief_delete_cancel'] = array(
+  $remove_form['actions']['ief_remove_cancel'] = array(
     '#type' => 'submit',
     '#value' => t('Cancel'),
-    '#name' => 'ief-delete-cancel-' . $delta,
+    '#name' => 'ief-remove-cancel-' . $delta,
     '#limit_validation_errors' => array(),
     '#ajax' => array(
       'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $delete_form['#ief_id'],
+      'wrapper' => 'inline-entity-form-' . $remove_form['#ief_id'],
     ),
     '#submit' => array('inline_entity_form_close_row_form'),
-    '#ief_row_delta' => $delete_form['#ief_row_delta'],
+    '#ief_row_delta' => $remove_form['#ief_row_delta'],
   );
 
-  return $delete_form;
+  return $remove_form;
 }
 
 /**
@@ -1009,7 +1006,7 @@ function inline_entity_form_delete_form($controller, $delete_form, &$form_state)
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_delete_confirm($form, &$form_state) {
+function inline_entity_form_remove_confirm($form, &$form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
   $delta = $form_state['triggering_element']['#ief_row_delta'];
@@ -1017,9 +1014,8 @@ function inline_entity_form_delete_confirm($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
   $settings = $form_state['inline_entity_form'][$ief_id]['settings'];
   $entity_id = entity_id($settings['entity_type'], $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['entity']);
-  // Unsaved entities and entities referenced through the "Add existing" form
-  // don't get sent to entity_delete().
-  if (!empty($entity_id) && !$form_state['inline_entity_form'][$ief_id]['entities'][$delta]['referenced']) {
+  // Unsaved entities don't get sent to entity_delete().
+  if (!empty($entity_id)) {
     $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
   }
   unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);

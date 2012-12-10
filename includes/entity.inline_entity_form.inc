@@ -293,20 +293,20 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Returns the delete form to be shown through the IEF widget.
+   * Returns the remove form to be shown through the IEF widget.
    *
-   * @param $delete_form
-   *   The delete form.
+   * @param $remove_form
+   *   The remove form.
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function deleteForm($delete_form, &$form_state) {
-    $entity_label = entity_label($this->entityType, $delete_form['#entity']);
-    $delete_form['message'] = array(
-      '#markup' => '<div>' . t('Are you sure you want to delete %label?', array('%label' => $entity_label)) . '</div>',
+  public function removeForm($remove_form, &$form_state) {
+    $entity_label = entity_label($this->entityType, $remove_form['#entity']);
+    $remove_form['message'] = array(
+      '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
     );
 
-    return $delete_form;
+    return $remove_form;
   }
 
   /**
