@@ -50,10 +50,6 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   public function defaultSettings() {
     $defaults = parent::defaultSettings();
 
-    // Adding existing entities is not supported for line items.
-    unset($defaults['allow_existing']);
-    unset($defaults['match_operator']);
-
     // Line items should always be deleted when the order is deleted, they
     // are never managed alone.
     $defaults['delete_references'] = TRUE;

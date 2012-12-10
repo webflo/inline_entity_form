@@ -9,6 +9,16 @@
  */
 
 /**
+ * Flag indicating that the entity should be unlinked.
+ */
+define('IEF_ENTITY_UNLINK', 1);
+
+/**
+ * Flag indicating that the entity should be unlinked and deleted.
+ */
+define('IEF_ENTITY_UNLINK_DELETE', 2);
+
+/**
  * Implements hook_menu().
  */
 function inline_entity_form_menu() {
@@ -971,7 +981,7 @@ function inline_entity_form_remove_form($controller, $remove_form, &$form_state)
     '#type' => 'submit',
     '#value' => t('Remove'),
     '#name' => 'ief-remove-confirm-' . $delta,
-    '#limit_validation_errors' => array(),
+    '#limit_validation_errors' => array($remove_form['#parents']),
     '#ajax' => array(
       'callback' => 'inline_entity_form_get_element',
       'wrapper' => 'inline-entity-form-' . $remove_form['#ief_id'],
@@ -996,10 +1006,12 @@ function inline_entity_form_remove_form($controller, $remove_form, &$form_state)
 }
 
 /**
- * Button #submit callback: Marks the entity for deletion and removes the row.
+ * Remove form submit callback.
  *
  * The row is identified by #ief_row_delta stored on the triggering
  * element.
+ * This isn't an #element_validate callback to avoid processing the
+ * remove form when the main form is submitted.
  *
  * @param $form
  *   The complete parent form.
@@ -1007,18 +1019,25 @@ function inline_entity_form_remove_form($controller, $remove_form, &$form_state)
  *   The form state of the parent form.
  */
 function inline_entity_form_remove_confirm($form, &$form_state) {
+  $form_state['rebuild'] = TRUE;
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
+  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
   $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $remove_form = $element['entities'][$delta]['form'];
 
-  $form_state['rebuild'] = TRUE;
-  $settings = $form_state['inline_entity_form'][$ief_id]['settings'];
-  $entity_id = entity_id($settings['entity_type'], $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['entity']);
-  // Unsaved entities don't get sent to entity_delete().
-  if (!empty($entity_id)) {
+  // Instantiate the controller and submit the form.
+  $controller = inline_entity_form_get_controller($instance);
+  $status = $controller->removeFormSubmit($remove_form, $form_state);
+  if ($status == IEF_ENTITY_UNLINK_DELETE) {
+    $settings = $form_state['inline_entity_form'][$ief_id]['settings'];
+    $entity_id = entity_id($settings['entity_type'], $remove_form['#entity']);
     $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
+    unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
   }
-  unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
+  elseif ($status == IEF_ENTITY_UNLINK) {
+    unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
+  }
 }
 
 /**

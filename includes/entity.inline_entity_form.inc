@@ -305,8 +305,44 @@ class EntityInlineEntityFormController {
     $remove_form['message'] = array(
       '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
     );
+    if ($this->getSetting('allow_existing')) {
+      $labels = $this->labels();
+      $remove_form['delete'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Delete this @type_singular from the system.', array('@type_singular' => $labels['singular'])),
+      );
+    }
 
     return $remove_form;
+  }
+
+  /**
+   * Handles the submission of a remove form.
+   * Decides what should happen to the entity after the removal confirmation.
+   *
+   * @param $remove_form
+   *   The remove form.
+   * @param $form_state
+   *   The form state of the parent form.
+   *
+   * @return
+   *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
+   */
+  public function removeFormSubmit($remove_form, &$form_state) {
+    $entity = $remove_form['#entity'];
+    $entity_id = entity_id($this->entityType, $entity);
+    $form_values = drupal_array_get_nested_value($form_state['values'], $remove_form['#parents']);
+    // This entity hasn't been saved yet, we can just unlink it.
+    if (empty($entity_id)) {
+      return IEF_ENTITY_UNLINK;
+    }
+    // If existing entities can be referenced, the delete happens only when
+    // specifically requested (the "Permanently delete" checkbox).
+    if ($this->getSetting('allow_existing') && !empty($form_values['delete'])) {
+      return IEF_ENTITY_UNLINK;
+    }
+
+    return IEF_ENTITY_UNLINK_DELETE;
   }
 
   /**
