@@ -301,11 +301,14 @@ class EntityInlineEntityFormController {
    *   The form state of the parent form.
    */
   public function removeForm($remove_form, &$form_state) {
-    $entity_label = entity_label($this->entityType, $remove_form['#entity']);
+    $entity = $remove_form['#entity'];
+    $entity_label = entity_label($this->entityType, $entity);
+    $access = entity_access('delete', $this->entityType, $entity);
+
     $remove_form['message'] = array(
       '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
     );
-    if ($this->getSetting('allow_existing')) {
+    if ($this->getSetting('allow_existing') && $access) {
       $labels = $this->labels();
       $remove_form['delete'] = array(
         '#type' => 'checkbox',

@@ -51,7 +51,7 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   $matches = array();
   if ($field['type'] == 'commerce_product_reference') {
     $match_operator = strtolower($controller->getSetting('match_operator'));
-    $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10);
+    $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10, TRUE);
 
     // Loop through the products and convert them into autocomplete output.
     foreach ($products as $product_id => $data) {
@@ -305,6 +305,7 @@ function inline_entity_form_settings($field, $instance) {
   $settings = array(
     'entity_type' => NULL,
     'bundles' => array(),
+    'create_bundles' => array(),
     'column' => NULL,
   );
 
@@ -334,11 +335,19 @@ function inline_entity_form_settings($field, $instance) {
     $settings['column'] = 'line_item_id';
   }
 
-  // By default, allow entities of all bundles to be created.
+  // If no specific bundle has been selected, assume all are available.
   if (empty($settings['bundles'])) {
     $info = entity_get_info($settings['entity_type']);
     foreach ($info['bundles'] as $bundle_name => $bundle_info) {
       $settings['bundles'][] = $bundle_name;
+    }
+  }
+
+  // Now create a filtered list of bundles that the user has access to.
+  foreach ($settings['bundles'] as $bundle) {
+    $new_entity = inline_entity_form_create_entity($settings['entity_type'], $bundle);
+    if (entity_access('create', $settings['entity_type'], $new_entity)) {
+      $settings['create_bundles'][] = $bundle;
     }
   }
 
@@ -529,32 +538,41 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           '#type' => 'container',
           '#attributes' => array('class' => array('ief-entity-operations')),
         );
-        $row['actions']['ief_entity_edit'] = array(
-          '#type' => 'submit',
-          '#value' => t('Edit'),
-          '#name' => 'ief-' . $ief_id . '-entity-edit-' . $key,
-          '#limit_validation_errors' => array(),
-          '#ajax' => array(
-            'callback' => 'inline_entity_form_get_element',
-            'wrapper' => $wrapper,
-          ),
-          '#submit' => array('inline_entity_form_open_row_form'),
-          '#ief_row_delta' => $key,
-          '#ief_row_form' => 'edit',
-        );
-        $row['actions']['ief_entity_remove'] = array(
-          '#type' => 'submit',
-          '#value' => t('Remove'),
-          '#name' => 'ief-' . $ief_id . '-entity-remove-' . $key,
-          '#limit_validation_errors' => array(),
-          '#ajax' => array(
-            'callback' => 'inline_entity_form_get_element',
-            'wrapper' => $wrapper,
-          ),
-          '#submit' => array('inline_entity_form_open_row_form'),
-          '#ief_row_delta' => $key,
-          '#ief_row_form' => 'remove',
-        );
+
+        if (entity_access('update', $controller->entityType(), $entity)) {
+          $row['actions']['ief_entity_edit'] = array(
+            '#type' => 'submit',
+            '#value' => t('Edit'),
+            '#name' => 'ief-' . $ief_id . '-entity-edit-' . $key,
+            '#limit_validation_errors' => array(),
+            '#ajax' => array(
+              'callback' => 'inline_entity_form_get_element',
+              'wrapper' => $wrapper,
+            ),
+            '#submit' => array('inline_entity_form_open_row_form'),
+            '#ief_row_delta' => $key,
+            '#ief_row_form' => 'edit',
+          );
+        }
+
+        // If 'allow_existing' is on, the default removal operation is unlink
+        // and the access check for deleting happens inside the controller
+        // removeForm() method.
+        if ($controller->getSetting('allow_existing') || entity_access('delete', $controller->entityType(), $entity)) {
+          $row['actions']['ief_entity_remove'] = array(
+            '#type' => 'submit',
+            '#value' => t('Remove'),
+            '#name' => 'ief-' . $ief_id . '-entity-remove-' . $key,
+            '#limit_validation_errors' => array(),
+            '#ajax' => array(
+              'callback' => 'inline_entity_form_get_element',
+              'wrapper' => $wrapper,
+            ),
+            '#submit' => array('inline_entity_form_open_row_form'),
+            '#ief_row_delta' => $key,
+            '#ief_row_form' => 'remove',
+          );
+        }
       }
     }
 
@@ -575,10 +593,10 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
     if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      if (count($settings['bundles']) == 1 && $instance['required'] && !$controller->getSetting('allow_existing')) {
+      if (count($settings['create_bundles']) == 1 && $instance['required'] && !$controller->getSetting('allow_existing')) {
         $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
         $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-          'bundle' => reset($settings['bundles']),
+          'bundle' => reset($settings['create_bundles']),
         );
       }
     }
@@ -591,39 +609,42 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#weight' => 100,
       );
 
-      // Let the user select the bundle, if multiple are available.
-      if (count($settings['bundles']) > 1) {
-        $bundles = array();
-        foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
-          if (in_array($bundle_name, $settings['bundles'])) {
-            $bundles[$bundle_name] = $bundle_info['label'];
+      // The user is allowed to create an entity of at least one bundle.
+      if (count($settings['create_bundles'])) {
+        // Let the user select the bundle, if multiple are available.
+        if (count($settings['create_bundles']) > 1) {
+          $bundles = array();
+          foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
+            if (in_array($bundle_name, $settings['create_bundles'])) {
+              $bundles[$bundle_name] = $bundle_info['label'];
+            }
           }
+
+          $element['actions']['bundle'] = array(
+            '#type' => 'select',
+            '#options' => $bundles,
+          );
+        }
+        else {
+          $element['actions']['bundle'] = array(
+            '#type' => 'value',
+            '#value' => reset($settings['create_bundles']),
+          );
         }
 
-        $element['actions']['bundle'] = array(
-          '#type' => 'select',
-          '#options' => $bundles,
+        $element['actions']['ief_add'] = array(
+          '#type' => 'submit',
+          '#value' => t('Add new @type_singular', array('@type_singular' => $labels['singular'])),
+          '#name' => 'ief-' . $ief_id . '-add',
+          '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
+          '#ajax' => array(
+            'callback' => 'inline_entity_form_get_element',
+            'wrapper' => $wrapper,
+          ),
+          '#submit' => array('inline_entity_form_open_form'),
+          '#ief_form' => 'add',
         );
       }
-      else {
-        $element['actions']['bundle'] = array(
-          '#type' => 'value',
-          '#value' => reset($settings['bundles']),
-        );
-      }
-
-      $element['actions']['ief_add'] = array(
-        '#type' => 'submit',
-        '#value' => t('Add new @type_singular', array('@type_singular' => $labels['singular'])),
-        '#name' => 'ief-' . $ief_id . '-add',
-        '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
-        '#ajax' => array(
-          'callback' => 'inline_entity_form_get_element',
-          'wrapper' => $wrapper,
-        ),
-        '#submit' => array('inline_entity_form_open_form'),
-        '#ief_form' => 'add',
-      );
 
       if ($controller->getSetting('allow_existing')) {
         $element['actions']['ief_add_existing'] = array(
