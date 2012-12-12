@@ -304,17 +304,19 @@ class EntityInlineEntityFormController {
     $entity = $remove_form['#entity'];
     $entity_id = entity_id($this->entityType, $entity);
     $entity_label = entity_label($this->entityType, $entity);
-    $access = entity_access('delete', $this->entityType, $entity);
 
     $remove_form['message'] = array(
       '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
     );
-    if (!empty($entity_id) && $this->getSetting('allow_existing') && $access) {
-      $labels = $this->labels();
-      $remove_form['delete'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Delete this @type_singular from the system.', array('@type_singular' => $labels['singular'])),
-      );
+    if (!empty($entity_id) && $this->getSetting('allow_existing')) {
+      $access = entity_access('delete', $this->entityType, $entity);
+      if ($access) {
+        $labels = $this->labels();
+        $remove_form['delete'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Delete this @type_singular from the system.', array('@type_singular' => $labels['singular'])),
+        );
+      }
     }
 
     return $remove_form;
