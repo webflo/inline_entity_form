@@ -2,6 +2,7 @@ name = Inline Entity Form
 description = "Provides a widget for inline management (creation, modification, removal) of referenced entities. "
 package = Fields
 dependencies[] = entity
+dependencies[] = system (>7.14)
 core = 7.x
 
 files[] = includes/entity.inline_entity_form.inc

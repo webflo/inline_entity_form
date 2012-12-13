@@ -42,7 +42,8 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
       '#weight' => !empty($extra_fields['title']) ? $extra_fields['title']['weight'] : -5,
     );
 
-    field_attach_form('node', $node, $entity_form, $form_state, LANGUAGE_NONE);
+    $langcode = entity_language('node', $node);
+    field_attach_form('node', $node, $entity_form, $form_state, $langcode);
 
     return $entity_form;
   }

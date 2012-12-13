@@ -382,6 +382,9 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // Build a parents array for this element's values in the form.
   $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
 
+  // Get the langcode of the parent entity.
+  $parent_langcode = entity_language($instance['entity_type'], $form['#entity']);
+
   // Assign a unique identifier to each IEF widget.
   $ief_id = $instance['id'];
   // Determine the wrapper ID for the entire element.
@@ -461,6 +464,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       '#parents' => array_merge($parents, array('form')),
       // Pass the current entity type.
       '#entity_type' => $settings['entity_type'],
+      // Pass the langcode of the parent entity,
+      '#parent_language' => $parent_langcode,
       // Identifies the IEF widget to which the form belongs.
       '#ief_id' => $ief_id,
     );
@@ -517,6 +522,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
           // Store the entity on the form, later modified in the controller.
           '#entity' => $entity,
           '#entity_type' => $settings['entity_type'],
+          // Pass the langcode of the parent entity,
+          '#parent_language' => $parent_langcode,
           // Identifies the IEF widget to which the form belongs.
           '#ief_id' => $ief_id,
           // Identifies the table row to which the form belongs.
@@ -735,7 +742,7 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
   elseif ($entity_form['#op'] == 'add') {
     // Create a new entity that will be passed to the form.
     $form_settings = $form_state['inline_entity_form'][$entity_form['#ief_id']]['form settings'];
-    $entity_form['#entity'] = inline_entity_form_create_entity($entity_form['#entity_type'], $form_settings['bundle']);
+    $entity_form['#entity'] = inline_entity_form_create_entity($entity_form['#entity_type'], $form_settings['bundle'], $entity_form['#parent_language']);
     $entity_form['#title'] = t('Add new @type_singular', array('@type_singular' => $labels['singular']));
   }
 
@@ -1234,15 +1241,27 @@ function inline_entity_form_get_element($form, $form_state) {
 }
 
 /**
- * Creates a new entity of the given type, with the bundle key set by default.
+ * Creates a new entity of the given type and bundle.
+ *
+ * @param $entity_type
+ *   Entity type.
+ * @param $bundle
+ *   Bundle.
+ * @param $language
+ *   (Optional) The language to set, if the entity has a language key.
  */
-function inline_entity_form_create_entity($entity_type, $bundle = '') {
+function inline_entity_form_create_entity($entity_type, $bundle, $language = NULL) {
   $entity_info = entity_get_info($entity_type);
   $bundle_key = $entity_info['entity keys']['bundle'];
   $default_values = array();
   // If the bundle key exists, it must always be set on an entity.
   if (!empty($bundle_key)) {
     $default_values[$bundle_key] = $bundle;
+  }
+  // Set the language if we have both a language key and a language value.
+  if (isset($language) && !empty($info['entity keys']['language'])) {
+    $language_key = $info['entity keys']['language'];
+    $default_values[$language_key] = $language;
   }
 
   return entity_create($entity_type, $default_values);

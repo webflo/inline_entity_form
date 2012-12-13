@@ -87,7 +87,8 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
       '#weight' => $extra_fields['description']['weight'],
     );
 
-    field_attach_form('taxonomy_term', $term, $entity_form, $form_state, LANGUAGE_NONE);
+    $langcode = entity_language('taxonomy_term', $term);
+    field_attach_form('taxonomy_term', $term, $entity_form, $form_state, $langcode);
 
     return $entity_form;
   }

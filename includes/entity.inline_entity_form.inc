@@ -208,7 +208,8 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
 
     if (!empty($info['fieldable'])) {
-      field_attach_form($this->entityType, $entity, $entity_form, $form_state, LANGUAGE_NONE);
+      $langcode = entity_language($this->entityType, $entity);
+      field_attach_form($this->entityType, $entity, $entity_form, $form_state, $langcode);
     }
 
     return $entity_form;
