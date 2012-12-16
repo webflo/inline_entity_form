@@ -383,7 +383,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
 
   // Get the langcode of the parent entity.
-  $parent_langcode = entity_language($instance['entity_type'], $form['#entity']);
+  $parent_langcode = entity_language($element['#entity_type'], $element['#entity']);
 
   // Assign a unique identifier to each IEF widget.
   $ief_id = $instance['id'];
@@ -691,6 +691,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         '#parents' => array_merge($parents, array('form')),
         // Pass the current entity type.
         '#entity_type' => $settings['entity_type'],
+        // Pass the langcode of the parent entity,
+        '#parent_language' => $parent_langcode,
       );
 
       if ($form_state['inline_entity_form'][$ief_id]['form'] == 'add') {
