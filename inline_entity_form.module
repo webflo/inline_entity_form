@@ -452,8 +452,18 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // The "Single value" widget assumes it is operating on a required single
   // value reference field with 1 allowed bundle.
   if ($widget['type'] == 'inline_entity_form_single') {
+    // Intentionally not using $settings['create_bundles'] here because this
+    // widget doesn't care about permissions because of its use case.
+    $bundle = reset($settings['bundles']);
+
+    // Uh oh, the parent entity type and bundle are the same as the inline
+    // entity type and bundle. We have recursion. Abort.
+    if ($element['#entity_type'] == $settings['entity_type'] && $element['#bundle'] == $bundle) {
+      return array();
+    }
+
     $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-      'bundle' => reset($settings['bundles']),
+      'bundle' => $bundle,
     );
 
     $element['form'] = array(
@@ -612,10 +622,16 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     // field is required and empty, and there's only one allowed bundle).
     if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
       if (count($settings['create_bundles']) == 1 && $instance['required'] && !$controller->getSetting('allow_existing')) {
-        $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
-        $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-          'bundle' => reset($settings['create_bundles']),
-        );
+        $bundle = reset($settings['create_bundles']);
+
+        // The parent entity type and bundle must not be the same as the inline
+        // entity type and bundle, to prevent recursion.
+        if ($element['#entity_type'] != $settings['entity_type'] || $element['#bundle'] != $bundle) {
+          $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
+          $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+            'bundle' => $bundle,
+          );
+        }
       }
     }
 
