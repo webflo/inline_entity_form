@@ -150,10 +150,19 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   public function entityFormSubmit(&$entity_form, &$form_state) {
     $line_item = $entity_form['#entity'];
     $line_item_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
-    $line_item->line_item_label = trim($line_item_values['line_item_label']);
     $line_item->quantity = sprintf("%.2f", $line_item_values['quantity']);
 
     field_attach_submit('commerce_line_item', $line_item, $entity_form, $form_state);
+
+    // Update the line item label based on the line item type.
+    // Product line item types always get the product SKU as the label.
+    if (in_array($line_item->type, commerce_product_line_item_types())) {
+      $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+      $line_item->line_item_label = $line_item_wrapper->commerce_product->sku->value();
+    }
+    else {
+      $line_item->line_item_label = trim($line_item_values['line_item_label']);
+    }
 
     // Update the total price.
     commerce_line_item_rebase_unit_price($line_item);
