@@ -106,6 +106,14 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     );
     field_attach_form('commerce_line_item', $line_item, $entity_form, $form_state);
 
+    // If the order is still in a cart status, then the prices are still being
+    // recalculated, meaning that no changes made to them would be permanent.
+    if (!empty($form_state['commerce_order']) && commerce_cart_order_is_cart($form_state['commerce_order'])) {
+      $language = $entity_form['commerce_unit_price']['#language'];
+      $entity_form['commerce_unit_price'][$language][0]['amount']['#disabled'] = TRUE;
+      $entity_form['commerce_unit_price'][$language][0]['currency_code']['#disabled'] = TRUE;
+    }
+
     // Tweaks specific to product line items.
     if (in_array($line_item->type, commerce_product_line_item_types())) {
       $entity_form['line_item_label']['#access'] = FALSE;
