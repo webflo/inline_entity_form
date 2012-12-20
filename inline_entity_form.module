@@ -1117,9 +1117,11 @@ function inline_entity_form_open_form($form, &$form_state) {
   $form_values = drupal_array_get_nested_value($form_state['values'], $parents);
 
   $form_state['inline_entity_form'][$ief_id]['form'] = $form_state['triggering_element']['#ief_form'];
-  $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-    'bundle' => $form_values['actions']['bundle'],
-  );
+  if (!empty($form_values['actions']['bundle'])) {
+    $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+      'bundle' => $form_values['actions']['bundle'],
+    );
+  }
 }
 
 /**
