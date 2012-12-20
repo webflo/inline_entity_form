@@ -48,7 +48,7 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
     return MENU_ACCESS_DENIED;
   }
 
-  $matches = array();
+  $results = array();
   if ($field['type'] == 'commerce_product_reference') {
     $match_operator = strtolower($controller->getSetting('match_operator'));
     $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10, TRUE);
