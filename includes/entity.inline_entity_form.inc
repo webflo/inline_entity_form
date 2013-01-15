@@ -228,7 +228,7 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
 
     if (!empty($info['fieldable'])) {
-      field_attach_form_validate($this->entityType, $entity, $entity_form, $form_state, LANGUAGE_NONE);
+      field_attach_form_validate($this->entityType, $entity, $entity_form, $form_state);
     }
   }
 
