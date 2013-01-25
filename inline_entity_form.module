@@ -1279,8 +1279,8 @@ function inline_entity_form_create_entity($entity_type, $bundle, $language = NUL
     $default_values[$bundle_key] = $bundle;
   }
   // Set the language if we have both a language key and a language value.
-  if (isset($language) && !empty($info['entity keys']['language'])) {
-    $language_key = $info['entity keys']['language'];
+  if (isset($language) && !empty($entity_info['entity keys']['language'])) {
+    $language_key = $entity_info['entity keys']['language'];
     $default_values[$language_key] = $language;
   }
 
