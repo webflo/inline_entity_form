@@ -718,7 +718,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
         if (!$controller->getSetting('allow_existing') && $instance['required']
-          && empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+          && empty($form_state['inline_entity_form'][$ief_id]['entities'])
+          && count($settings['create_bundles']) == 1) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
       }
