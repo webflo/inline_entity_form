@@ -393,13 +393,17 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       $attributes = $this->attributes($entity->type);
       if (!empty($attributes)) {
         $wrapper = entity_metadata_wrapper('commerce_product', $entity);
+        $attribute_values = array();
         foreach ($attributes as $field_name => $attribute) {
           $attribute_label = $wrapper->{$field_name}->label();
           if (!empty($attribute_label)) {
             $attribute_values[] = $attribute_label;
           }
         }
-        $entity->title .= ' (' . implode(', ', $attribute_values) . ')';
+
+        if (!empty($attribute_values)) {
+          $entity->title .= ' (' . implode(', ', $attribute_values) . ')';
+        }
       }
     }
 
