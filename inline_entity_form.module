@@ -565,7 +565,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
         );
 
         // Make sure entity_access is not checked for unsaved entities.
-        $entity_id = entity_id($controller->entityType(), $entity);
+        list($entity_id) = entity_extract_ids($controller->entityType(), $entity);
         if (empty($entity_id) || entity_access('update', $controller->entityType(), $entity)) {
           $row['actions']['ief_entity_edit'] = array(
             '#type' => 'submit',
@@ -1089,7 +1089,7 @@ function inline_entity_form_remove_confirm($form, &$form_state) {
   $status = $controller->removeFormSubmit($remove_form, $form_state);
   if ($status == IEF_ENTITY_UNLINK_DELETE) {
     $settings = $form_state['inline_entity_form'][$ief_id]['settings'];
-    $entity_id = entity_id($settings['entity_type'], $remove_form['#entity']);
+    list($entity_id) = entity_extract_ids($settings['entity_type'], $remove_form['#entity']);
     $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
     unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
   }
@@ -1236,7 +1236,9 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
         if ($item['needs_save']) {
           $controller->save($item['entity'], $context);
         }
-        $entity_ids[] = array($values['settings']['column'] => entity_id($entity_type, $item['entity']));
+
+        list($entity_id) = entity_extract_ids($entity_type, $item['entity']);
+        $entity_ids[] = array($values['settings']['column'] => $entity_id);
       }
       // Set the list of ids as the field value.
       $parent_entity->{$field_name}[$langcode] = $entity_ids;
@@ -1335,7 +1337,7 @@ function theme_inline_entity_form_entity_table($variables) {
   $rows = array();
   foreach (element_children($form) as $key) {
     $entity = $form[$key]['#entity'];
-    $entity_id = entity_id($entity_type, $entity);
+    list($entity_id) = entity_extract_ids($entity_type, $entity);
     // Many field formatters (such as the ones for files and images) need
     // certain data that might be missing on unsaved entities because the field
     // load hooks haven't run yet. Because of that, those hooks are invoked
