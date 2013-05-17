@@ -772,8 +772,6 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
 
   // Retrieve the form provided by the controller.
   $entity_form = $controller->entityForm($entity_form, $form_state);
-  // Allow other modules to alter the form.
-  drupal_alter('inline_entity_form_entity_form', $entity_form, $form_state);
 
   // Add the actions
   $entity_form['actions'] = array(
@@ -823,6 +821,9 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
   // which moves the element to the specified fieldset without modifying its
   // position in $form_state['values'].
   $entity_form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
+
+  // Allow other modules to alter the form.
+  drupal_alter('inline_entity_form_entity_form', $entity_form, $form_state);
 
   return $entity_form;
 }
