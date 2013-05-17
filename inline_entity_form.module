@@ -939,6 +939,9 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
   $reference_form['actions']['ief_reference_cancel']['#submit'] = array('inline_entity_form_close_form');
   $reference_form['#element_validate'][] = 'inline_entity_form_process_reference_form';
 
+  // Allow other modules to alter the form.
+  drupal_alter('inline_entity_form_reference_form', $reference_form, $form_state);
+
   return $reference_form;
 }
 
