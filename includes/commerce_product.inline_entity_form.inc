@@ -46,7 +46,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     );
     $fields['sku'] = array(
       'type' => 'property',
-      'label' => 'SKU',
+      'label' => t('SKU'),
       'visible' => TRUE,
       'weight' => 2,
     );
