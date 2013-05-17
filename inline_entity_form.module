@@ -345,15 +345,7 @@ function inline_entity_form_settings($field, $instance) {
 
   // Now create a filtered list of bundles that the user has access to.
   foreach ($settings['bundles'] as $bundle) {
-    // Commerce requires a stub entity to be passed for "create" checks.
-    // See http://drupal.org/node/1865022
-    if (in_array($settings['entity_type'], array('commerce_product', 'commerce_line_item'))) {
-      $new_entity = inline_entity_form_create_entity($settings['entity_type'], $bundle);
-    }
-    else {
-      $new_entity = $bundle;
-    }
-
+    $new_entity = inline_entity_form_create_entity($settings['entity_type'], $bundle);
     if (entity_access('create', $settings['entity_type'], $new_entity)) {
       $settings['create_bundles'][] = $bundle;
     }
