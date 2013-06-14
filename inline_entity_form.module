@@ -898,6 +898,7 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
     '#autocomplete_path' => $autocomplete_path,
     '#element_validate' => array('_inline_entity_form_autocomplete_validate'),
     '#required' => TRUE,
+    '#maxlength' => 255,
   );
   // Add the actions
   $reference_form['actions'] = array(
