@@ -60,7 +60,12 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
 
         // If the product has an imagefield, show it.
         if ($field['type'] == 'image') {
-          $image_style = $instance['widget']['settings']['preview_image_style'];
+          // Determine the correct image style to use.
+          $image_style = 'thumbnail';
+          if (!empty($instance['widget']['settings']['preview_image_style'])) {
+            $image_style = $instance['widget']['settings']['preview_image_style'];
+          }
+
           $fields[$field_name] = array(
             'type' => 'field',
             'label' => $instance['label'],
