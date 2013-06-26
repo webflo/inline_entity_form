@@ -389,14 +389,18 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     '#suffix' => '</div>',
     '#attached' => array(
       'css' => array(),
-      'js' => array(
-        // Give the JS file a weight so that it runs after file.js.
-        drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js' => array('weight' => 10),
-      ),
     ),
     '#ief_id' => $ief_id,
     '#ief_root' => TRUE,
   ) + $element;
+
+  if (module_exists('file')) {
+    // file.js triggers uploads when the main Submit button is clicked.
+    $element['#attached']['js'] = array(
+      drupal_get_path('module', 'file') . '/file.js',
+      drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js',
+    );
+  }
 
   $base_css = array(
     'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.css',
