@@ -8,36 +8,30 @@
 class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**
-   * Overrides EntityInlineEntityFormController::defaultFields().
+   * Overrides EntityInlineEntityFormController::tableFields().
    */
-  public function defaultFields($bundles) {
+  public function tableFields($bundles) {
     $fields = array();
     $fields['line_item_label'] = array(
       'type' => 'property',
       'label' => t('Label'),
-      'visible' => TRUE,
       'weight' => 1,
     );
     $fields['commerce_unit_price'] = array(
       'type' => 'field',
       'label' => t('Unit price'),
       'formatter' => 'commerce_price_formatted_amount',
-      'settings' => array(),
-      'visible' => TRUE,
       'weight' => 2,
     );
     $fields['quantity'] = array(
       'type' => 'property',
       'label' => t('Quantity'),
-      'visible' => TRUE,
       'weight' => 3,
     );
     $fields['commerce_total'] = array(
       'type' => 'field',
       'label' => t('Total'),
       'formatter' => 'commerce_price_formatted_amount',
-      'settings' => array(),
-      'visible' => TRUE,
       'weight' => 4,
     );
 

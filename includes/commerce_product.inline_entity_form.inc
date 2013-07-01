@@ -34,20 +34,18 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::defaultFields().
+   * Overrides EntityInlineEntityFormController::tableFields().
    */
-  public function defaultFields($bundles) {
+  public function tableFields($bundles) {
     $fields = array();
     $fields['title'] = array(
       'type' => 'property',
       'label' => t('Variation title'),
-      'visible' => TRUE,
       'weight' => 1,
     );
     $fields['sku'] = array(
       'type' => 'property',
       'label' => t('SKU'),
-      'visible' => TRUE,
       'weight' => 2,
     );
 
@@ -72,7 +70,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
             'formatter' => 'image',
             'settings' => array('image_style' => $image_style),
             'delta' => 0,
-            'visible' => TRUE,
             'weight' => -10,
           );
           // Don't add any other imagefields. One is enough.
@@ -97,8 +94,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
             'type' => 'field',
             'label' => $attribute['instance']['label'],
             'formatter' => $field_type['default_formatter'],
-            'settings' => array(),
-            'visible' => TRUE,
             'weight' => ++$weight,
           );
         }
@@ -109,14 +104,11 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       'type' => 'field',
       'label' => t('Price'),
       'formatter' => 'commerce_price_formatted_amount',
-      'settings' => array(),
-      'visible' => TRUE,
       'weight' => 99,
     );
     $fields['status'] = array(
       'type' => 'property',
       'label' => t('Status'),
-      'visible' => TRUE,
       'weight' => 100,
     );
 

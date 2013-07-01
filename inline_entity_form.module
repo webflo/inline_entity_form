@@ -499,15 +499,18 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
       '#theme' => 'inline_entity_form_entity_table',
       '#entity_type' => $settings['entity_type'],
     );
+
     // Get the fields that should be displayed in the table.
-    // They can either come from the widget settings or from a "default fields"
-    // callback.
-    if (!empty($widget['settings']['fields'])) {
-      $element['entities']['#fields'] = $widget['settings']['fields'];
-    }
-    else {
-      $element['entities']['#fields'] = $controller->defaultFields($settings['bundles']);
-    }
+    $fields = $controller->tableFields($settings['bundles']);
+    $context = array(
+      'parent_entity_type' => $instance['entity_type'],
+      'parent_bundle' => $instance['bundle'],
+      'field_name' => $instance['field_name'],
+      'entity_type' => $settings['entity_type'],
+      'allowed_bundles' => $settings['bundles'],
+    );
+    drupal_alter('inline_entity_form_table_fields', $fields, $context);
+    $element['entities']['#table_fields'] = $fields;
 
     foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as $key => $value) {
       // Data used by theme_inline_entity_form_entity_table().
@@ -1305,14 +1308,9 @@ function inline_entity_form_create_entity($entity_type, $bundle, $language = NUL
 function theme_inline_entity_form_entity_table($variables) {
   $form = $variables['form'];
   $entity_type = $form['#entity_type'];
-  $fields = $form['#fields'];
-  // Sort the fields by weight and remove the ones that won't be displayed.
+  $fields = $form['#table_fields'];
+  // Sort the fields by weight.
   uasort($fields, 'drupal_sort_weight');
-  foreach ($fields as $field_name => $field) {
-    if (empty($field['visible'])) {
-      unset($fields[$field_name]);
-    }
-  }
   // If one of the rows is in form context, disable tabledrag.
   $has_tabledrag = TRUE;
   foreach (element_children($form) as $key) {
@@ -1375,12 +1373,16 @@ function theme_inline_entity_form_entity_table($variables) {
         $data = check_plain($data);
       }
       elseif ($field['type'] == 'field') {
-        $settings = array(
+        $display = array(
           'label' => 'hidden',
-          'type' => $field['formatter'],
-          'settings' => $field['settings']
-        );
-        $renderable_data = field_view_field($entity_type, $entity, $field_name, $settings);
+        ) + $field;
+        // The formatter needs to be under the 'type' key.
+        if (isset($display['formatter'])) {
+          $display['type'] = $display['formatter'];
+          unset($display['formatter']);
+        }
+
+        $renderable_data = field_view_field($entity_type, $entity, $field_name, $display);
         // The field has specified an exact delta to display.
         if (isset($field['delta'])) {
           if (!empty($renderable_data[$field['delta']])) {
