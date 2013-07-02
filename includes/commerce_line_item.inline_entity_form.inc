@@ -153,26 +153,28 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     $line_item = $entity_form['#entity'];
     $line_item_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
     $line_item->quantity = sprintf("%.2f", $line_item_values['quantity']);
-
     field_attach_submit('commerce_line_item', $line_item, $entity_form, $form_state);
+    commerce_line_item_rebase_unit_price($line_item);
 
+    $wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     // Update the line item label based on the line item type.
     // Product line item types always get the product SKU as the label.
     if (in_array($line_item->type, commerce_product_line_item_types())) {
-      $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-      $line_item->line_item_label = $line_item_wrapper->commerce_product->sku->value();
+      $wrapper->line_item_label = $wrapper->commerce_product->sku->value();
     }
     else {
-      $line_item->line_item_label = trim($line_item_values['line_item_label']);
+      $wrapper->line_item_label = trim($line_item_values['line_item_label']);
     }
 
     // Update the total price.
-    commerce_line_item_rebase_unit_price($line_item);
-
-    // Product line item types by default get the product SKU as the label.
-    if (empty($line_item->line_item_id) && in_array($line_item->type, commerce_product_line_item_types())) {
-      $product = commerce_product_load($line_item->commerce_product[LANGUAGE_NONE][0]['product_id']);
-      $line_item->line_item_label = $product->sku;
+    $unit_price = $wrapper->commerce_unit_price->value();
+    $wrapper->commerce_total->amount = $line_item->quantity * $unit_price['amount'];
+    $wrapper->commerce_total->currency_code = $unit_price['currency_code'];
+    // Add the components multiplied by the quantity to the data array.
+    foreach ($unit_price['data']['components'] as $key => &$component) {
+      $component['price']['amount'] *= $line_item->quantity;
     }
+    // Set the updated data array to the total price.
+    $wrapper->commerce_total->data = $unit_price['data'];
   }
 }
