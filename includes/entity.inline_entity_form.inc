@@ -168,6 +168,12 @@ class EntityInlineEntityFormController {
         ),
       ),
     );
+    // The single widget doesn't offer autocomplete functionality.
+    if ($instance['widget']['type'] == 'inline_entity_form_single') {
+      $form['allow_existing']['#access'] = FALSE;
+      $form['match_operator']['#access'] = FALSE;
+    }
+
     $form['delete_references'] = array(
       '#type' => 'checkbox',
       '#title' => t('Delete referenced @label when the parent entity is deleted.', array('@label' => $labels['plural'])),

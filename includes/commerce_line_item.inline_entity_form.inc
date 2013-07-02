@@ -58,8 +58,8 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     $form = parent::settingsForm($field, $instance);
 
     // Adding existing entities is not supported for line items.
-    unset($form['allow_existing']);
-    unset($form['match_operator']);
+    $form['allow_existing']['#access'] = FALSE;
+    $form['match_operator']['#access'] = FALSE;
 
     return $form;
   }
