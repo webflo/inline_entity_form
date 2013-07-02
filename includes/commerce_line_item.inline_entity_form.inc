@@ -181,12 +181,25 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
+   * Overrides EntityInlineEntityFormController::removeForm().
+   */
+  public function removeForm($remove_form, &$form_state) {
+    // EntityInlineEntityFormController::removeForm uses the entity label
+    // in the confirmation message, but line items don't have any.
+    $remove_form['message'] = array(
+      '#markup' => '<div>' . t('Are you sure you want to remove this line item?') . '</div>',
+    );
+
+    return $remove_form;
+  }
+
+  /**
    * Returns an array of product line item types.
    *
    * If the commerce_product_reference module is missing, returns an empty
    * array as a fallback.
    */
-  private function productLineItemTypes() {
+  protected function productLineItemTypes() {
     if (module_exists('commerce_product_reference')) {
       return commerce_product_line_item_types();
     }
