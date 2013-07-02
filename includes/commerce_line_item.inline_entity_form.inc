@@ -102,14 +102,16 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
 
     // If the order is still in a cart status, then the prices are still being
     // recalculated, meaning that no changes made to them would be permanent.
-    if (!empty($form_state['commerce_order']) && commerce_cart_order_is_cart($form_state['commerce_order'])) {
-      $language = $entity_form['commerce_unit_price']['#language'];
-      $entity_form['commerce_unit_price'][$language][0]['amount']['#disabled'] = TRUE;
-      $entity_form['commerce_unit_price'][$language][0]['currency_code']['#disabled'] = TRUE;
+    if (!empty($form_state['commerce_order']) && module_exists('commerce_order')) {
+      if (commerce_cart_order_is_cart($form_state['commerce_order'])) {
+        $language = $entity_form['commerce_unit_price']['#language'];
+        $entity_form['commerce_unit_price'][$language][0]['amount']['#disabled'] = TRUE;
+        $entity_form['commerce_unit_price'][$language][0]['currency_code']['#disabled'] = TRUE;
+      }
     }
 
     // Tweaks specific to product line items.
-    if (in_array($line_item->type, commerce_product_line_item_types())) {
+    if (in_array($line_item->type, $this->productLineItemTypes())) {
       $entity_form['line_item_label']['#access'] = FALSE;
       $entity_form['commerce_display_path']['#access'] = FALSE;
       $entity_form['commerce_product']['#weight'] = -100;
@@ -159,7 +161,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     $wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     // Update the line item label based on the line item type.
     // Product line item types always get the product SKU as the label.
-    if (in_array($line_item->type, commerce_product_line_item_types())) {
+    if (in_array($line_item->type, $this->productLineItemTypes())) {
       $wrapper->line_item_label = $wrapper->commerce_product->sku->value();
     }
     else {
@@ -176,5 +178,20 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     }
     // Set the updated data array to the total price.
     $wrapper->commerce_total->data = $unit_price['data'];
+  }
+
+  /**
+   * Returns an array of product line item types.
+   *
+   * If the commerce_product_reference module is missing, returns an empty
+   * array as a fallback.
+   */
+  private function productLineItemTypes() {
+    if (module_exists('commerce_product_reference')) {
+      return commerce_product_line_item_types();
+    }
+    else {
+      return array();
+    }
   }
 }
