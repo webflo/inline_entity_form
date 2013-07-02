@@ -1219,13 +1219,13 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
   foreach (field_info_instances($parent_entity_type, $bundle_name) as $instance_name => $instance) {
     if (isset($instance['widget']) && strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
       $field_name = $instance['field_name'];
-      $langcode = $form[$field_name]['#language'];
       $ief_id = $instance['id'];
-      // There's no IEF data for this field, skip it.
-      if (empty($form_state['inline_entity_form'][$ief_id])) {
+      // Skip if the field is not on the form or there is no IEF data for it.
+      if (empty($form_state['inline_entity_form'][$ief_id]) || !isset($form[$field_name])) {
         continue;
       }
 
+      $langcode = $form[$field_name]['#language'];
       $values = $form_state['inline_entity_form'][$ief_id];
       $entity_type = $values['settings']['entity_type'];
       $controller = inline_entity_form_get_controller($instance);
