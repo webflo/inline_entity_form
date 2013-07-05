@@ -411,15 +411,6 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   // Add entity type specific CSS.
   _inline_entity_form_attach_css($controller->css(), $element['#attached']['css']);
 
-  // Mark the parent form submit button with a special flag that will trigger
-  // a save of inline forms and entity weights.
-  if (!empty($form['submit'])) {
-    $form['submit']['#ief_submit_all'] = TRUE;
-  }
-  elseif (!empty($form['actions']['submit'])) {
-    $form['actions']['submit']['#ief_submit_all'] = TRUE;
-  }
-
   // Initialize the IEF array in form state.
   if (empty($form_state['inline_entity_form'][$ief_id])) {
     $form_state['inline_entity_form'][$ief_id] = array(
@@ -740,6 +731,27 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   }
 
   return $element;
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Adds the #ief_submit_all flag to the main submit button of a form that
+ * contains an IEF widget.
+ * Needs to be done in an alter hook because many forms add the submit button
+ * after inline_entity_form_field_widget_form() is called.
+ */
+function inline_entity_form_form_alter(&$form, &$form_state, $form_id) {
+  if (!empty($form_state['inline_entity_form'])) {
+    // Mark the parent form submit button with a special flag that will trigger
+    // a save of inline forms and entity weights.
+    if (!empty($form['submit'])) {
+      $form['submit']['#ief_submit_all'] = TRUE;
+    }
+    elseif (!empty($form['actions']['submit'])) {
+      $form['actions']['submit']['#ief_submit_all'] = TRUE;
+    }
+  }
 }
 
 /**
