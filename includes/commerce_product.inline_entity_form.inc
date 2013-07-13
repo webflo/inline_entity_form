@@ -173,11 +173,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#title' => t('Details'),
       '#attributes' => array('class' => array('ief-product-details', 'ief-entity-fieldset')),
     );
-    $entity_form['product_image'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('@label image', array('@label' => drupal_ucfirst($labels['singular']))),
-      '#attributes' => array('class' => array('ief-product-image', 'ief-entity-fieldset')),
-    );
 
     $entity_form['sku'] = array(
       '#type' => 'textfield',
@@ -253,35 +248,12 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       }
     }
 
-    // Arrange images and other non-attribute fields.
-    $imagefields = array();
+    // Arrange non-attribute fields.
     foreach (field_info_instances('commerce_product', $product->type) as $name => $instance) {
       $field_name = $instance['field_name'];
       $field = field_info_field($field_name);
-
-      if ($field['type'] == 'image') {
-        $entity_form[$field_name]['#fieldset'] = 'product_image';
-        $imagefields[] = $field_name;
-      }
-      elseif (!isset($attributes[$field_name])) {
+      if (!isset($attributes[$field_name])) {
         $entity_form[$field_name]['#fieldset'] = 'product_details';
-      }
-    }
-
-    if (count($imagefields) == 0) {
-      // The fieldset is empty, hide it.
-      $entity_form['product_image']['#access'] = FALSE;
-    }
-    elseif (count($imagefields) == 1) {
-      // There's only one image on the product, no need to show its title, the
-      // fieldset title is enough.
-      $field_name = reset($imagefields);
-      $language = $entity_form[$field_name]['#language'];
-      unset($entity_form[$field_name][$language][0]['#title']);
-      // Prevent multi-value imagefields from rendering their own fieldsets.
-      if (isset($entity_form[$field_name][$language]['#theme_wrappers']) && in_array('fieldset', $entity_form[$field_name][$language]['#theme_wrappers'])) {
-        $key = array_search('fieldset', $entity_form[$field_name][$language]['#theme_wrappers']);
-        unset($entity_form[$field_name][$language]['#theme_wrappers'][$key]);
       }
     }
 
