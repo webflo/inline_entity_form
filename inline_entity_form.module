@@ -335,6 +335,9 @@ function inline_entity_form_settings($field, $instance) {
     $settings['column'] = 'line_item_id';
   }
 
+  // Allow other modules to alter the settings.
+  drupal_alter('inline_entity_form_settings', $settings, $field, $instance);
+
   // If no specific bundle has been selected, assume all are available.
   if (empty($settings['bundles'])) {
     $info = entity_get_info($settings['entity_type']);
