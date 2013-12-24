@@ -74,8 +74,8 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   $matches = array();
   foreach ($results as $result) {
     // Strip things like starting/trailing white spaces, line breaks and tags.
-    $result = str_replace("\n", '', trim(decode_entities(strip_tags($result))));
-    $matches[$result] = '<div class="reference-autocomplete">' . $result . '</div>';
+    $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(decode_entities(strip_tags($result)))));
+    $matches[$key] = '<div class="reference-autocomplete">' . $result . '</div>';
   }
 
   drupal_json_output($matches);
