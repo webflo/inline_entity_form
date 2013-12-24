@@ -179,7 +179,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#title' => t('SKU'),
       '#description' => t('Supply a unique identifier using letters, numbers, hyphens, and underscores. Commas may not be used.'),
       '#default_value' => $product->sku,
-      '#maxlength' => 128,
+      '#maxlength' => 255,
       '#required' => TRUE,
       '#fieldset' => 'product_details',
       '#weight' => $extra_fields['sku']['weight'],
@@ -188,7 +188,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#type' => 'textfield',
       '#title' => t('@label title', array('@label' => drupal_ucfirst($labels['singular']))),
       '#default_value' => $product->title,
-      '#maxlength' => 128,
+      '#maxlength' => 255,
       '#required' => TRUE,
       '#fieldset' => 'product_details',
       // The label might be missing if the Title module has replaced it.
