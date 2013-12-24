@@ -876,8 +876,20 @@ function inline_entity_form_process_entity_form(&$entity_form, &$form_state) {
   $controller = inline_entity_form_get_controller($instance);
   $controller->entityFormValidate($entity_form, $form_state);
 
+  // Unset untriggered conditional fields errors
+  $errors = form_get_errors();
+  if ($errors && !empty($form_state['conditional_fields_untriggered_dependents'])) {
+    foreach ($form_state['conditional_fields_untriggered_dependents'] as $untriggered_dependents ) {
+      if (!empty($untriggered_dependents['errors'])) {
+        foreach (array_keys($untriggered_dependents['errors']) as $key) {
+          unset($errors[$key]);
+        }
+      }
+    }
+  }
+
   // If validation passed, execute the submission handler.
-  if (!form_get_errors() && !$form_state['rebuild']) {
+  if (!$errors && !$form_state['rebuild']) {
     $controller->entityFormSubmit($entity_form, $form_state);
     $entity = $entity_form['#entity'];
 
