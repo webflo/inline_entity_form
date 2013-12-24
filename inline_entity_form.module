@@ -487,6 +487,11 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   else {
     // Build the "Multiple value" widget.
     $element['#element_validate'] = array('inline_entity_form_save_row_weights');
+    // Add the required element marker & validation.
+    if ($element['#required']) {
+      $element['#title'] .= ' ' . theme('form_required_marker', array('element' => $element));
+      $element['#element_validate'][] = 'inline_entity_form_required_field';
+    }
 
     $element['entities'] = array(
       '#tree' => TRUE,
@@ -1222,6 +1227,27 @@ function inline_entity_form_save_row_weights($element, &$form_state, $form) {
   // in the form state.
   foreach (element_children($element['entities']) as $key) {
     $form_state['inline_entity_form'][$ief_id]['entities'][$key]['weight'] = $element['entities'][$key]['delta']['#value'];
+  }
+}
+
+/**
+ * IEF widget #element_validate callback: Required field validation.
+ */
+function inline_entity_form_required_field($element, &$form_state, $form) {
+  // Only react on the submission of the parent form.
+  if (empty($form_state['triggering_element']['#ief_submit_all'])) {
+    return;
+  }
+
+  $ief_id = $element['#ief_id'];
+  $has_children = !empty($form_state['inline_entity_form'][$ief_id]['entities']);
+  $form_open = !empty($form_state['inline_entity_form'][$ief_id]['form']);
+  // If the add new / add existing form is open, its validation / submission
+  // will do the job instead (either by preventing the parent form submission
+  // or by adding a new referenced entity).
+  if (!$has_children && !$form_open) {
+    $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
+    form_error($element, t('!name field is required.', array('!name' => $instance['label'])));
   }
 }
 
