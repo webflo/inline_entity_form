@@ -44,7 +44,8 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
   $settings = inline_entity_form_settings($field, $instance);
   $controller = inline_entity_form_get_controller($instance);
   // The current entity type is not supported, or the string is empty.
-  if (!$field || !$instance || !$controller || empty($string)) {
+  // strlen() is used instead of empty() since '0' is a valid value.
+  if (!$field || !$instance || !$controller || !strlen($string)) {
     return MENU_ACCESS_DENIED;
   }
 
