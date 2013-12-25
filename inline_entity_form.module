@@ -388,7 +388,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   $element = array(
     '#type' => 'fieldset',
     '#tree' => TRUE,
-    '#description' => NULL,
+    '#description' => $instance['description'],
     '#prefix' => '<div id="' . $wrapper . '">',
     '#suffix' => '</div>',
     '#attached' => array(
@@ -610,12 +610,15 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 
     $entity_count = count($form_state['inline_entity_form'][$ief_id]['entities']);
     if ($cardinality != FIELD_CARDINALITY_UNLIMITED) {
-      // Return visual cue of cardinality count.
-      $element['#description'] = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
+      // Add a visual cue of cardinality count.
+      $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
         '@entities_count' => $entity_count,
         '@cardinality_count' => $cardinality,
         '@label' => $labels['plural'],
       ));
+      $element['cardinality_count'] = array(
+        '#markup' => '<div class="ief-cardinality-count">' . $message . '</div>',
+      );
     }
     // Do not return the rest of the form if cardinality count has been reached.
     if ($cardinality > 0 && $entity_count == $cardinality) {
