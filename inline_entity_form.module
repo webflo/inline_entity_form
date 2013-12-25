@@ -294,6 +294,32 @@ function inline_entity_form_field_widget_settings_form($field, $instance) {
 }
 
 /**
+ * Implements hook_field_widget_properties_alter().
+ *
+ * IEF is not suited for usage within VBO's "modify entity values" action.
+ * If that context is detected, switch the widget to the default one specified
+ * by the field type.
+ */
+function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
+  $view = views_get_current_view();
+  $is_ief_widget = (strpos($widget['type'], 'inline_entity_form') === 0);
+  $has_vbo = module_exists('views_bulk_operations');
+  if ($view && $is_ief_widget && $has_vbo) {
+    $vbo = _views_bulk_operations_get_field($view);
+    if ($vbo) {
+      $field = $context['field'];
+      $field_type = field_info_field_types($field['type']);
+      $widget_type = field_info_widget_types($field_type['default_widget']);
+      $widget_type += array('settings');
+
+      $widget['type'] = $field_type['default_widget'];
+      $widget['module'] = $widget_type['module'];
+      $widget['settings'] = $widget_type['settings'];
+    }
+  }
+}
+
+/**
  * Introspects field and instance settings, and determines the correct settings
  * for the functioning of the widget.
  *
