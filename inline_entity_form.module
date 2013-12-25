@@ -635,7 +635,7 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
     }
 
     $entity_count = count($form_state['inline_entity_form'][$ief_id]['entities']);
-    if ($cardinality != FIELD_CARDINALITY_UNLIMITED) {
+    if ($cardinality > 1) {
       // Add a visual cue of cardinality count.
       $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
         '@entities_count' => $entity_count,
