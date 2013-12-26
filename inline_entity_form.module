@@ -853,14 +853,25 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
 
   // Add the appropriate submit handlers and their related data.
   if ($entity_form['#op'] == 'add') {
-    $entity_form['actions']['ief_add_save']['#submit'] = array('inline_entity_form_close_form');
-    $entity_form['actions']['ief_add_cancel']['#submit'] = array('inline_entity_form_close_form');
+    $entity_form['actions']['ief_add_save']['#submit'] = array(
+      'inline_entity_form_close_form',
+    );
+    $entity_form['actions']['ief_add_cancel']['#submit'] = array(
+      'inline_entity_form_close_form',
+      'inline_entity_form_cleanup_form_state',
+    );
   }
   else {
-    $entity_form['actions']['ief_edit_save']['#submit'] = array('inline_entity_form_close_row_form');
     $entity_form['actions']['ief_edit_save']['#ief_row_delta'] = $entity_form['#ief_row_delta'];
-    $entity_form['actions']['ief_edit_cancel']['#submit'] = array('inline_entity_form_close_row_form');
     $entity_form['actions']['ief_edit_cancel']['#ief_row_delta'] = $entity_form['#ief_row_delta'];
+
+    $entity_form['actions']['ief_edit_save']['#submit'] = array(
+      'inline_entity_form_close_row_form',
+    );
+    $entity_form['actions']['ief_edit_cancel']['#submit'] = array(
+      'inline_entity_form_close_row_form',
+      'inline_entity_form_cleanup_row_form_state',
+    );
   }
 
   // Add the validation callback that calls the controller's
@@ -920,7 +931,7 @@ function inline_entity_form_process_entity_form(&$entity_form, &$form_state) {
   // If validation passed, execute the submission handler.
   if (!$errors && !$form_state['rebuild']) {
     $controller->entityFormSubmit($entity_form, $form_state);
-    $entity = $entity_form['#entity'];
+    inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
 
     if ($entity_form['#op'] == 'add') {
       // Determine the correct weight of the new element.
@@ -1217,6 +1228,19 @@ function inline_entity_form_close_form($form, &$form_state) {
 }
 
 /**
+ * Button #submit callback: Cleans up form state for a closed entity form.
+ *
+ * @param $form
+ *   The complete parent form.
+ * @param $form_state
+ *   The form state of the parent form.
+ */
+function inline_entity_form_cleanup_form_state($form, &$form_state) {
+  $element = inline_entity_form_get_element($form, $form_state);
+  inline_entity_form_cleanup_entity_form_state($element['form'], $form_state);
+}
+
+/**
  * Button #submit callback: Opens a row form in the IEF widget.
  *
  * The row is identified by #ief_row_delta stored on the triggering
@@ -1253,6 +1277,21 @@ function inline_entity_form_close_row_form($form, &$form_state) {
 
   $form_state['rebuild'] = TRUE;
   $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['form'] = NULL;
+}
+
+/**
+ * Button #submit callback: Cleans up form state for a closed entity row form.
+ *
+ * @param $form
+ *   The complete parent form.
+ * @param $form_state
+ *   The form state of the parent form.
+ */
+function inline_entity_form_cleanup_row_form_state($form, &$form_state) {
+  $element = inline_entity_form_get_element($form, $form_state);
+  $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $entity_form = $element['entities'][$delta]['form'];
+  inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
 }
 
 /**
@@ -1337,6 +1376,38 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
       // Set the list of ids as the field value.
       $parent_entity->{$field_name}[$langcode] = $entity_ids;
     }
+  }
+}
+
+/**
+ * Cleans up the form state for a submitted entity form.
+ *
+ * After field_attach_submit() has run and the form has been closed, the form
+ * state still contains field data in $form_state['field']. Unless that
+ * data is removed, the next form with the same #parents (reopened add form,
+ * for example) will contain data (i.e. uploaded files) from the previous form.
+ *
+ * @param $entity_form
+ *   The entity form.
+ * @param $form_state
+ *   The form state of the parent form.
+ */
+function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state) {
+  $info = entity_get_info($entity_form['#entity_type']);
+  if (empty($info['fieldable'])) {
+    // The entity type is not fieldable, nothing to cleanup.
+    return;
+  }
+
+  list(, , $bundle) = entity_extract_ids($entity_form['#entity_type'], $entity_form['#entity']);
+  $instances = field_info_instances($entity_form['#entity_type'], $bundle);
+  foreach ($instances as $instance) {
+    $field_name = $instance['field_name'];
+    $parents = $entity_form[$field_name]['#parents'];
+    array_pop($parents);
+    $langcode = $entity_form[$field_name]['#language'];
+    $field_state = array();
+    field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
   }
 }
 
