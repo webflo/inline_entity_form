@@ -120,7 +120,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
    */
   public function defaultSettings() {
     $defaults = parent::defaultSettings();
-    $defaults['autogenerate_title'] = TRUE;
+    $defaults['autogenerate_title'] = FALSE;
     $defaults['use_variation_language'] = FALSE;
 
     return $defaults;
