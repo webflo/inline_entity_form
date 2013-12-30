@@ -7,6 +7,19 @@
 
 class CommerceProductInlineEntityFormController extends EntityInlineEntityFormController {
 
+  public function __construct($entityType, array $settings) {
+    $this->entityType = $entityType;
+    $this->settings = $settings + $this->defaultSettings();
+
+    // Convert the old product-specific variation language setting.
+    if (!empty($settings['use_variation_language']) && empty($settings['override_labels'])) {
+      $this->settings['override_labels'] = TRUE;
+      $this->settings['label_singular'] = 'variation';
+      $this->settings['label_plural'] = 'variations';
+      unset($this->settings['use_variation_language']);
+    }
+  }
+
   /**
    * Overrides EntityInlineEntityFormController::css().
    */
@@ -14,23 +27,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
     return array(
       'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/commerce-product.css',
     );
-  }
-
-  /**
-   * Overrides EntityInlineEntityFormController::labels().
-   */
-  public function labels() {
-    $labels = parent::labels();
-
-    // Override the strings.
-    if ($this->settings['use_variation_language']) {
-      $labels = array(
-        'singular' => t('variation'),
-        'plural' => t('variations'),
-      );
-    }
-
-    return $labels;
   }
 
   /**
@@ -121,7 +117,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   public function defaultSettings() {
     $defaults = parent::defaultSettings();
     $defaults['autogenerate_title'] = FALSE;
-    $defaults['use_variation_language'] = FALSE;
 
     return $defaults;
   }
@@ -137,11 +132,6 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
       '#title' => t('Auto generate the product title'),
       '#description' => t('This will hide the title input field and generate the title by appending any available attributes to the @entity title.', array('@entity' => $instance['entity_type'])),
       '#default_value' => $this->settings['autogenerate_title'],
-    );
-    $form['use_variation_language'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Refer to the referenced products as "variations"'),
-      '#default_value' => $this->settings['use_variation_language'],
     );
 
     return $form;
