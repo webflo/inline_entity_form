@@ -408,6 +408,8 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
   $parent_langcode = entity_language($element['#entity_type'], $element['#entity']);
 
   // Assign a unique identifier to each IEF widget.
+  // Since $parents can get quite long, sha1() ensures that every id has
+  // a consistent and relatively short length while maintaining uniqueness.
   $ief_id = sha1(implode('-', $parents));
   // Determine the wrapper ID for the entire element.
   $wrapper = 'inline-entity-form-' . $ief_id;
