@@ -1474,8 +1474,11 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
         list($entity_id) = entity_extract_ids($entity_type, $item['entity']);
         $entity_ids[] = array($values['settings']['column'] => $entity_id);
       }
-      // Set the list of ids as the field value.
-      $parent_entity->{$field_name}[$langcode] = $entity_ids;
+
+      if (!empty($entity_ids)) {
+        // Set the list of ids as the field value.
+        $parent_entity->{$field_name}[$langcode] = $entity_ids;
+      }
     }
   }
 }
