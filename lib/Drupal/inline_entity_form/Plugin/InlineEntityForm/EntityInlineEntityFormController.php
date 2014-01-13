@@ -5,14 +5,18 @@
  * Defines the base inline entity form controller.
  */
 
+namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+
+use \Drupal\Component\Utility\NestedArray;
+
 class EntityInlineEntityFormController {
 
   protected $entityType;
   public $settings;
 
-  public function __construct($entityType, array $settings) {
-    $this->entityType = $entityType;
-    $this->settings = $settings + $this->defaultSettings();
+  public function __construct($configuration, $plugin_id, $plugin_definition) {
+    $this->entityType = $plugin_id;
+    $this->settings = $configuration + $this->defaultSettings();
   }
 
   /**
@@ -34,9 +38,10 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Returns the default entity type labels.
+   * Returns an array of entity type labels (singular, plural) fit to be
+   * included in the UI text.
    */
-  public function defaultLabels() {
+  public function labels() {
     $labels = array(
       'singular' => t('entity'),
       'plural' => t('entities'),
@@ -47,22 +52,6 @@ class EntityInlineEntityFormController {
     // for more precise and user-friendly strings.
     if (!empty($info['permission labels'])) {
       $labels = $info['permission labels'];
-    }
-
-    return $labels;
-  }
-
-  /**
-   * Returns an array of entity type labels fit for display in the UI.
-   */
-  public function labels() {
-    $labels = $this->defaultLabels();
-    // The admin has specified the exact labels that should be used.
-    if ($this->settings['override_labels']) {
-      $labels = array(
-        'singular' => $this->settings['label_singular'],
-        'plural' => $this->settings['label_plural'],
-      );
     }
 
     return $labels;
@@ -92,30 +81,30 @@ class EntityInlineEntityFormController {
    */
   public function tableFields($bundles) {
     $info = entity_get_info($this->entityType);
-    $metadata = entity_get_property_info($this->entityType);
+    $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
 
     $fields = array();
-    if (!empty($info['entity keys']['label'])) {
-      $label_key = $info['entity keys']['label'];
+    if ($info->hasKey('label')) {
+      $label_key = $info->getKey('label');
       $fields[$label_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata['properties'][$label_key]['label'] : t('Label'),
+        'label' => $metadata ? $metadata[$label_key]['label'] : t('Label'),
         'weight' => 1,
       );
     }
     else {
-      $id_key = $info['entity keys']['id'];
+      $id_key = $info->getKey('id');
       $fields[$id_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata['properties'][$id_key]['label'] : t('ID'),
+        'label' => $metadata ? $metadata[$id_key]['label'] : t('ID'),
         'weight' => 1,
       );
     }
     if (count($bundles) > 1) {
-      $bundle_key = $info['entity keys']['bundle'];
+      $bundle_key = $info->getKey('bundle');
       $fields[$bundle_key] = array(
         'type' => 'property',
-        'label' => $metadata ? $metadata['properties'][$bundle_key]['label'] : t('Type'),
+        'label' => $metadata ? $metadata[$bundle_key]['label'] : t('Type'),
         'weight' => 2,
       );
     }
@@ -144,10 +133,6 @@ class EntityInlineEntityFormController {
     $defaults['allow_existing'] = FALSE;
     $defaults['match_operator'] = 'CONTAINS';
     $defaults['delete_references'] = FALSE;
-    $labels = $this->defaultLabels();
-    $defaults['override_labels'] = FALSE;
-    $defaults['label_singular'] = $labels['singular'];
-    $defaults['label_plural'] = $labels['plural'];
 
     return $defaults;
   }
@@ -257,8 +242,8 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
 
     if (!empty($info['fieldable'])) {
-      $langcode = entity_language($this->entityType, $entity);
-      field_attach_form($this->entityType, $entity, $entity_form, $form_state, $langcode);
+      $langcode = $entity->language->id();
+      field_attach_form($entity, $entity_form, $form_state, $langcode);
     }
 
     return $entity_form;
@@ -276,8 +261,8 @@ class EntityInlineEntityFormController {
     $info = entity_get_info($this->entityType);
     $entity = $entity_form['#entity'];
 
-    if (!empty($info['fieldable'])) {
-      field_attach_form_validate($this->entityType, $entity, $entity_form, $form_state);
+    if ($info->isFieldable()) {
+      field_attach_form_validate($entity, $entity_form, $form_state);
     }
   }
 
@@ -295,20 +280,55 @@ class EntityInlineEntityFormController {
    */
   public function entityFormSubmit(&$entity_form, &$form_state) {
     $info = entity_get_info($this->entityType);
-    list(, , $bundle) = entity_extract_ids($this->entityType, $entity_form['#entity']);
+    $bundle = $entity_form['#entity']->bundle();
     $entity = $entity_form['#entity'];
-    $entity_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
+    $entity_values = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
 
     // Copy top-level form values that are not for fields to entity properties,
     // without changing existing entity properties that are not being edited by
     // this form. Copying field values must be done using field_attach_submit().
-    $values_excluding_fields = $info['fieldable'] ? array_diff_key($entity_values, field_info_instances($this->entityType, $bundle)) : $entity_values;
+    $values_excluding_fields = $info->isFieldable() ? array_diff_key($entity_values, field_info_instances($this->entityType, $bundle)) : $entity_values;
     foreach ($values_excluding_fields as $key => $value) {
       $entity->$key = $value;
     }
 
-    if ($info['fieldable']) {
+    if ($info->isFieldable()) {
+      // @fixme: port to d8.
       field_attach_submit($this->entityType, $entity, $entity_form, $form_state);
+      // $this->cleanupFieldFormState($entity_form, $form_state);
+    }
+  }
+
+  /**
+   * Cleans up the form state for each field.
+   *
+   * After field_attach_submit() has run and the entity has been saved, the form
+   * state still contains field data in $form_state['field']. Unless that
+   * data is removed, the next form with the same #parents (reopened add form,
+   * for example) will contain data (i.e. uploaded files) from the previous form.
+   *
+   * @param $entity_form
+   *   The entity form.
+   * @param $form_state
+   *   The form state of the parent form.
+   */
+  protected function cleanupFieldFormState($entity_form, &$form_state) {
+    $bundle = $entity_form['#entity']->bundle();
+    /**
+     * @var \Drupal\Field\Entity\FieldInstance[] $instances
+     */
+    $instances = field_info_instances($entity_form['#entity_type'], $bundle);
+    foreach ($instances as $instance) {
+      $field_name = $instance->getFieldName();
+      if (isset($entity_form[$field_name])) {
+        $parents = $entity_form[$field_name]['#parents'];
+
+        $field_state = field_form_get_state($parents, $field_name, $form_state);
+        unset($field_state['items']);
+        unset($field_state['entity']);
+        $field_state['items_count'] = 0;
+        field_form_set_state($parents, $field_name, $form_state, $field_state);
+      }
     }
   }
 
@@ -322,14 +342,14 @@ class EntityInlineEntityFormController {
    */
   public function removeForm($remove_form, &$form_state) {
     $entity = $remove_form['#entity'];
-    list($entity_id) = entity_extract_ids($this->entityType, $entity);
-    $entity_label = entity_label($this->entityType, $entity);
+    $entity_id = $entity->id();
+    $entity_label = $entity->label();
 
     $remove_form['message'] = array(
       '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
     );
     if (!empty($entity_id) && $this->getSetting('allow_existing')) {
-      $access = entity_access('delete', $this->entityType, $entity);
+      $access = $entity->access('delete');
       if ($access) {
         $labels = $this->labels();
         $remove_form['delete'] = array(
@@ -356,8 +376,8 @@ class EntityInlineEntityFormController {
    */
   public function removeFormSubmit($remove_form, &$form_state) {
     $entity = $remove_form['#entity'];
-    list($entity_id) = entity_extract_ids($this->entityType, $entity);
-    $form_values = drupal_array_get_nested_value($form_state['values'], $remove_form['#parents']);
+    $entity_id = $entity->id();
+    $form_values = NestedArray::getValue($form_state['values'], $remove_form['#parents']);
     // This entity hasn't been saved yet, we can just unlink it.
     if (empty($entity_id)) {
       return IEF_ENTITY_UNLINK;
@@ -382,7 +402,7 @@ class EntityInlineEntityFormController {
    *   - parent_entity: The parent entity.
    */
   public function save($entity, $context) {
-    entity_save($this->entityType, $entity);
+    $entity->save();
   }
 
   /**

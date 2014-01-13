@@ -10,6 +10,7 @@
  * work done by Drupal.behaviors.fileButtons.
  */
 Drupal.behaviors.inlineEntityForm = {
+  /*
   attach: function (context) {
     if (Drupal.file) {
       $('input.ief-entity-submit', context).unbind('mousedown', Drupal.file.disableFields);
@@ -20,6 +21,7 @@ Drupal.behaviors.inlineEntityForm = {
       $('input.form-submit', context).bind('mousedown', Drupal.file.disableFields);
     }
   }
+  */
 };
 
 })(jQuery);

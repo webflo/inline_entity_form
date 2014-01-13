@@ -98,11 +98,11 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
       '#weight' => $extra_fields['label']['weight'],
       '#fieldset' => 'line_item_details',
     );
-    field_attach_form('commerce_line_item', $line_item, $entity_form, $form_state);
+    field_attach_form($line_item, $entity_form, $form_state);
 
     // If the order is still in a cart status, then the prices are still being
     // recalculated, meaning that no changes made to them would be permanent.
-    if (!empty($form_state['commerce_order']) && module_exists('commerce_cart')) {
+    if (!empty($form_state['commerce_order']) && module_exists('commerce_order')) {
       if (commerce_cart_order_is_cart($form_state['commerce_order'])) {
         $language = $entity_form['commerce_unit_price']['#language'];
         $entity_form['commerce_unit_price'][$language][0]['amount']['#disabled'] = TRUE;
@@ -134,7 +134,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     $line_item = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);
-    $line_item_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
+    $line_item_values = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
     $quantity = $line_item_values['quantity'];
 
     if (!is_numeric($quantity) || $quantity <= 0) {
@@ -145,7 +145,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
       form_set_error($parents_path . '][quantity', t('You must specify a whole number for the quantity.'));
     }
 
-    field_attach_form_validate('commerce_line_item', $line_item, $entity_form, $form_state);
+    field_attach_form_validate($line_item, $entity_form, $form_state);
   }
 
   /**
@@ -153,7 +153,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
    */
   public function entityFormSubmit(&$entity_form, &$form_state) {
     $line_item = $entity_form['#entity'];
-    $line_item_values = drupal_array_get_nested_value($form_state['values'], $entity_form['#parents']);
+    $line_item_values = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
     $line_item->quantity = sprintf("%.2f", $line_item_values['quantity']);
     field_attach_submit('commerce_line_item', $line_item, $entity_form, $form_state);
     commerce_line_item_rebase_unit_price($line_item);

@@ -7,6 +7,7 @@
  * (for example, order -> line items), where the child entities are never
  * managed outside the parent form.
  */
+use Drupal\Component\Utility\NestedArray;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -92,6 +93,12 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
  *   An instantiated controller object, or FALSE if none found.
  */
 function inline_entity_form_get_controller($instance) {
+  $field = $instance->getField();
+  $instance_settings = $instance->getSettings();
+  $field_settings = $field->getSettings();
+  return \Drupal::service("plugin.manager.inline_entity_form")->createInstance($field_settings['target_type']);
+
+  /*
   $field = field_info_field($instance['field_name']);
   $type_settings = $instance['widget']['settings']['type_settings'];
   $ief_settings = inline_entity_form_settings($field, $instance);
@@ -102,16 +109,16 @@ function inline_entity_form_get_controller($instance) {
   }
 
   return new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
+  */
 }
 
 /**
  * Implements hook_entity_info_alter().
  */
 function inline_entity_form_entity_info_alter(&$entity_info) {
-  $entity_info['node']['inline entity form'] = array(
-    'controller' => 'NodeInlineEntityFormController',
-  );
+  $entity_info['node']->setController('inline entity form', '\Drupal\inline_entity_form\Plugin\InlineEntityForm\NodeInlineEntityFormController');
 
+  /*
   if (isset($entity_info['taxonomy_term'])) {
     $entity_info['taxonomy_term']['inline entity form'] = array(
       'controller' => 'TaxonomyTermInlineEntityFormController',
@@ -127,6 +134,7 @@ function inline_entity_form_entity_info_alter(&$entity_info) {
       'controller' => 'CommerceLineItemInlineEntityFormController',
     );
   }
+  */
 }
 
 /**
@@ -227,40 +235,6 @@ function inline_entity_form_theme() {
 }
 
 /**
- * Implements hook_field_widget_info().
- */
-function inline_entity_form_field_widget_info() {
-  $widgets = array();
-
-  $widgets['inline_entity_form_single'] = array(
-    'label' => t('Inline entity form - Single value'),
-    'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
-    'settings' => array(
-      'fields' => array(),
-      'type_settings' => array(),
-    ),
-    'behaviors' => array(
-      'multiple values' => FIELD_BEHAVIOR_CUSTOM,
-      'default value' => FIELD_BEHAVIOR_NONE,
-    ),
-  );
-  $widgets['inline_entity_form'] = array(
-    'label' => t('Inline entity form - Multiple values'),
-    'field types' => array('commerce_line_item_reference', 'commerce_product_reference', 'entityreference'),
-    'settings' => array(
-      'fields' => array(),
-      'type_settings' => array(),
-    ),
-    'behaviors' => array(
-      'multiple values' => FIELD_BEHAVIOR_CUSTOM,
-      'default value' => FIELD_BEHAVIOR_NONE,
-    ),
-  );
-
-  return $widgets;
-}
-
-/**
  * Implements hook_field_widget_settings_form().
  */
 function inline_entity_form_field_widget_settings_form($field, $instance) {
@@ -320,460 +294,6 @@ function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
 }
 
 /**
- * Introspects field and instance settings, and determines the correct settings
- * for the functioning of the widget.
- *
- * Settings:
- *   - entity_type - The entity_type being managed.
- *   - bundles - Bundles of entities that the user is allowed to create.
- *   - column - The name of the ref. field column that stores the entity id.
- */
-function inline_entity_form_settings($field, $instance) {
-  $settings = array(
-    'entity_type' => NULL,
-    'bundles' => array(),
-    'create_bundles' => array(),
-    'column' => NULL,
-  );
-
-  if ($field['type'] == 'commerce_product_reference') {
-    $settings['entity_type'] = 'commerce_product';
-    $settings['column'] = 'product_id';
-
-    // The product reference field has its bundle setting, use it.
-    $types = array_filter($instance['settings']['referenceable_types']);
-    if (!empty($types)) {
-      $settings['bundles'] = array_values($types);
-    }
-  }
-  elseif ($field['type'] == 'entityreference') {
-    $settings['entity_type'] = $field['settings']['target_type'];
-    $settings['column'] = 'target_id';
-
-    if (!empty($field['settings']['handler_settings']['target_bundles'])) {
-      $bundles = array_filter($field['settings']['handler_settings']['target_bundles']);
-      if (!empty($bundles)) {
-        $settings['bundles'] = array_values($bundles);
-      }
-    }
-  }
-  elseif ($field['type'] == 'commerce_line_item_reference') {
-    $settings['entity_type'] = 'commerce_line_item';
-    $settings['column'] = 'line_item_id';
-  }
-
-  // Allow other modules to alter the settings.
-  drupal_alter('inline_entity_form_settings', $settings, $field, $instance);
-
-  // If no specific bundle has been selected, assume all are available.
-  if (empty($settings['bundles'])) {
-    $info = entity_get_info($settings['entity_type']);
-    foreach ($info['bundles'] as $bundle_name => $bundle_info) {
-      $settings['bundles'][] = $bundle_name;
-    }
-  }
-
-  // Now create a filtered list of bundles that the user has access to.
-  foreach ($settings['bundles'] as $bundle) {
-    $new_entity = inline_entity_form_create_entity($settings['entity_type'], $bundle);
-    if (entity_access('create', $settings['entity_type'], $new_entity)) {
-      $settings['create_bundles'][] = $bundle;
-    }
-  }
-
-  return $settings;
-}
-
-/**
- * Implements hook_field_widget_form().
- */
-function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  $widget = $instance['widget'];
-  $settings = inline_entity_form_settings($field, $instance);
-  $entity_info = entity_get_info($settings['entity_type']);
-  $cardinality = $field['cardinality'];
-  $controller = inline_entity_form_get_controller($instance);
-  // The current entity type is not supported, execution can't continue.
-  if (!$controller) {
-    return array();
-  }
-
-  // Get the entity type labels for the UI strings.
-  $labels = $controller->labels();
-
-  // Build a parents array for this element's values in the form.
-  $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
-
-  // Get the langcode of the parent entity.
-  $parent_langcode = entity_language($element['#entity_type'], $element['#entity']);
-
-  // Assign a unique identifier to each IEF widget.
-  // Since $parents can get quite long, sha1() ensures that every id has
-  // a consistent and relatively short length while maintaining uniqueness.
-  $ief_id = sha1(implode('-', $parents));
-  // Determine the wrapper ID for the entire element.
-  $wrapper = 'inline-entity-form-' . $ief_id;
-  $element = array(
-    '#type' => 'fieldset',
-    '#tree' => TRUE,
-    '#description' => $instance['description'],
-    '#prefix' => '<div id="' . $wrapper . '">',
-    '#suffix' => '</div>',
-    '#attached' => array(
-      'css' => array(),
-    ),
-    '#ief_id' => $ief_id,
-    '#ief_root' => TRUE,
-  ) + $element;
-
-  if (module_exists('file')) {
-    // file.js triggers uploads when the main Submit button is clicked.
-    $element['#attached']['js'] = array(
-      drupal_get_path('module', 'file') . '/file.js',
-      drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js',
-    );
-  }
-
-  $base_css = array(
-    'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.css',
-    'seven' => drupal_get_path('module', 'inline_entity_form') . '/theme/inline_entity_form.seven.css',
-  );
-  // Add the base module CSS.
-  _inline_entity_form_attach_css($base_css, $element['#attached']['css']);
-  // Add entity type specific CSS.
-  _inline_entity_form_attach_css($controller->css(), $element['#attached']['css']);
-
-  // Initialize the IEF array in form state.
-  if (empty($form_state['inline_entity_form'][$ief_id])) {
-    $form_state['inline_entity_form'][$ief_id] = array(
-      'form' => NULL,
-      'settings' => $settings,
-      'instance' => $instance,
-    );
-
-    // Load the entities from the $items array and store them in the form
-    // state for further manipulation.
-    $form_state['inline_entity_form'][$ief_id]['entities'] = array();
-    $entity_ids = array();
-    foreach ($items as $item) {
-      $entity_ids[] = $item[$settings['column']];
-    }
-
-    $delta = 0;
-    foreach (entity_load($settings['entity_type'], $entity_ids) as $entity) {
-      $form_state['inline_entity_form'][$ief_id]['entities'][$delta] = array(
-        'entity' => $entity,
-        'weight' => $delta,
-        'form' => NULL,
-        'needs_save' => FALSE,
-      );
-
-      $delta++;
-    }
-  }
-
-  // Build the appropriate widget.
-  // The "Single value" widget assumes it is operating on a required single
-  // value reference field with 1 allowed bundle.
-  if ($widget['type'] == 'inline_entity_form_single') {
-    // Intentionally not using $settings['create_bundles'] here because this
-    // widget doesn't care about permissions because of its use case.
-    $bundle = reset($settings['bundles']);
-
-    // Uh oh, the parent entity type and bundle are the same as the inline
-    // entity type and bundle. We have recursion. Abort.
-    if ($element['#entity_type'] == $settings['entity_type'] && $element['#bundle'] == $bundle) {
-      return array();
-    }
-
-    $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-      'bundle' => $bundle,
-    );
-
-    $element['form'] = array(
-      '#type' => 'container',
-      '#op' => 'add',
-      // Used by Field API and controller methods to find the relevant
-      // values in $form_state.
-      '#parents' => array_merge($parents, array('form')),
-      // Pass the current entity type.
-      '#entity_type' => $settings['entity_type'],
-      // Pass the langcode of the parent entity,
-      '#parent_language' => $parent_langcode,
-      // Identifies the IEF widget to which the form belongs.
-      '#ief_id' => $ief_id,
-    );
-    if (!empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      $element['form']['#op'] = 'edit';
-      $element['form']['#entity'] = $form_state['inline_entity_form'][$ief_id]['entities'][0]['entity'];
-      $element['form']['#ief_row_delta'] = 0;
-    }
-
-    $element['form'] = inline_entity_form_entity_form($controller, $element['form'], $form_state);
-    // Hide all actions, the widget form behaves like a part of the main form.
-    $element['form']['actions']['#access'] = FALSE;
-  }
-  else {
-    // Build the "Multiple value" widget.
-    $element['#element_validate'] = array('inline_entity_form_update_row_weights');
-    // Add the required element marker & validation.
-    if ($element['#required']) {
-      $element['#title'] .= ' ' . theme('form_required_marker', array('element' => $element));
-      $element['#element_validate'][] = 'inline_entity_form_required_field';
-    }
-
-    $element['entities'] = array(
-      '#tree' => TRUE,
-      '#theme' => 'inline_entity_form_entity_table',
-      '#entity_type' => $settings['entity_type'],
-    );
-
-    // Get the fields that should be displayed in the table.
-    $fields = $controller->tableFields($settings['bundles']);
-    $context = array(
-      'parent_entity_type' => $instance['entity_type'],
-      'parent_bundle' => $instance['bundle'],
-      'field_name' => $instance['field_name'],
-      'entity_type' => $settings['entity_type'],
-      'allowed_bundles' => $settings['bundles'],
-    );
-    drupal_alter('inline_entity_form_table_fields', $fields, $context);
-    $element['entities']['#table_fields'] = $fields;
-
-    foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as $key => $value) {
-      // Data used by theme_inline_entity_form_entity_table().
-      $element['entities'][$key]['#entity'] = $entity = $value['entity'];
-      $element['entities'][$key]['#needs_save'] = $value['needs_save'];
-
-      // Handle row weights.
-      $element['entities'][$key]['#weight'] = $value['weight'];
-
-      // First check to see if this entity should be displayed as a form.
-      if (!empty($value['form'])) {
-        $element['entities'][$key]['delta'] = array(
-          '#type' => 'value',
-          '#value' => $value['weight'],
-        );
-        $element['entities'][$key]['form'] = array(
-          '#type' => 'container',
-          '#attributes' => array('class' => array('ief-form', 'ief-form-row')),
-          '#op' => $value['form'],
-          // Used by Field API and controller methods to find the relevant
-          // values in $form_state.
-          '#parents' => array_merge($parents, array('entities', $key, 'form')),
-          // Store the entity on the form, later modified in the controller.
-          '#entity' => $entity,
-          '#entity_type' => $settings['entity_type'],
-          // Pass the langcode of the parent entity,
-          '#parent_language' => $parent_langcode,
-          // Identifies the IEF widget to which the form belongs.
-          '#ief_id' => $ief_id,
-          // Identifies the table row to which the form belongs.
-          '#ief_row_delta' => $key,
-        );
-        // Prepare data for the form callbacks.
-        $form = &$element['entities'][$key]['form'];
-
-        // Add the appropriate form.
-        if ($value['form'] == 'edit') {
-          $form += inline_entity_form_entity_form($controller, $form, $form_state);
-        }
-        elseif ($value['form'] == 'remove') {
-          $form += inline_entity_form_remove_form($controller, $form, $form_state);
-        }
-      }
-      else {
-        $row = &$element['entities'][$key];
-        $row['delta'] = array(
-          '#type' => 'weight',
-          '#delta' => 50,
-          '#default_value' => $value['weight'],
-          '#attributes' => array('class' => array('ief-entity-delta')),
-        );
-        // Add an actions container with edit and delete buttons for the entity.
-        $row['actions'] = array(
-          '#type' => 'container',
-          '#attributes' => array('class' => array('ief-entity-operations')),
-        );
-
-        // Make sure entity_access is not checked for unsaved entities.
-        list($entity_id) = entity_extract_ids($controller->entityType(), $entity);
-        if (empty($entity_id) || entity_access('update', $controller->entityType(), $entity)) {
-          $row['actions']['ief_entity_edit'] = array(
-            '#type' => 'submit',
-            '#value' => t('Edit'),
-            '#name' => 'ief-' . $ief_id . '-entity-edit-' . $key,
-            '#limit_validation_errors' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_get_element',
-              'wrapper' => $wrapper,
-            ),
-            '#submit' => array('inline_entity_form_open_row_form'),
-            '#ief_row_delta' => $key,
-            '#ief_row_form' => 'edit',
-          );
-        }
-
-        // If 'allow_existing' is on, the default removal operation is unlink
-        // and the access check for deleting happens inside the controller
-        // removeForm() method.
-        if (empty($entity_id) || $controller->getSetting('allow_existing')
-          || entity_access('delete', $controller->entityType(), $entity)) {
-          $row['actions']['ief_entity_remove'] = array(
-            '#type' => 'submit',
-            '#value' => t('Remove'),
-            '#name' => 'ief-' . $ief_id . '-entity-remove-' . $key,
-            '#limit_validation_errors' => array(),
-            '#ajax' => array(
-              'callback' => 'inline_entity_form_get_element',
-              'wrapper' => $wrapper,
-            ),
-            '#submit' => array('inline_entity_form_open_row_form'),
-            '#ief_row_delta' => $key,
-            '#ief_row_form' => 'remove',
-          );
-        }
-      }
-    }
-
-    $entity_count = count($form_state['inline_entity_form'][$ief_id]['entities']);
-    if ($cardinality > 1) {
-      // Add a visual cue of cardinality count.
-      $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
-        '@entities_count' => $entity_count,
-        '@cardinality_count' => $cardinality,
-        '@label' => $labels['plural'],
-      ));
-      $element['cardinality_count'] = array(
-        '#markup' => '<div class="ief-cardinality-count">' . $message . '</div>',
-      );
-    }
-    // Do not return the rest of the form if cardinality count has been reached.
-    if ($cardinality > 0 && $entity_count == $cardinality) {
-      return $element;
-    }
-
-    // Try to open the add form (if it's the only allowed action, the
-    // field is required and empty, and there's only one allowed bundle).
-    if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      if (count($settings['create_bundles']) == 1 && $instance['required'] && !$controller->getSetting('allow_existing')) {
-        $bundle = reset($settings['create_bundles']);
-
-        // The parent entity type and bundle must not be the same as the inline
-        // entity type and bundle, to prevent recursion.
-        if ($element['#entity_type'] != $settings['entity_type'] || $element['#bundle'] != $bundle) {
-          $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
-          $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
-            'bundle' => $bundle,
-          );
-        }
-      }
-    }
-
-    // If no form is open, show buttons that open one.
-    if (empty($form_state['inline_entity_form'][$ief_id]['form'])) {
-      $element['actions'] = array(
-        '#attributes' => array('class' => array('container-inline')),
-        '#type' => 'container',
-        '#weight' => 100,
-      );
-
-      // The user is allowed to create an entity of at least one bundle.
-      if (count($settings['create_bundles'])) {
-        // Let the user select the bundle, if multiple are available.
-        if (count($settings['create_bundles']) > 1) {
-          $bundles = array();
-          foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
-            if (in_array($bundle_name, $settings['create_bundles'])) {
-              $bundles[$bundle_name] = $bundle_info['label'];
-            }
-          }
-
-          $element['actions']['bundle'] = array(
-            '#type' => 'select',
-            '#options' => $bundles,
-          );
-        }
-        else {
-          $element['actions']['bundle'] = array(
-            '#type' => 'value',
-            '#value' => reset($settings['create_bundles']),
-          );
-        }
-
-        $element['actions']['ief_add'] = array(
-          '#type' => 'submit',
-          '#value' => t('Add new @type_singular', array('@type_singular' => $labels['singular'])),
-          '#name' => 'ief-' . $ief_id . '-add',
-          '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
-          '#ajax' => array(
-            'callback' => 'inline_entity_form_get_element',
-            'wrapper' => $wrapper,
-          ),
-          '#submit' => array('inline_entity_form_open_form'),
-          '#ief_form' => 'add',
-        );
-      }
-
-      if ($controller->getSetting('allow_existing')) {
-        $element['actions']['ief_add_existing'] = array(
-          '#type' => 'submit',
-          '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
-          '#name' => 'ief-' . $ief_id . '-add-existing',
-          '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
-          '#ajax' => array(
-            'callback' => 'inline_entity_form_get_element',
-            'wrapper' => $wrapper,
-          ),
-          '#submit' => array('inline_entity_form_open_form'),
-          '#ief_form' => 'ief_add_existing',
-        );
-      }
-    }
-    else {
-      // There's a form open, show it.
-      $element['form'] = array(
-        '#type' => 'fieldset',
-        '#attributes' => array('class' => array('ief-form', 'ief-form-bottom')),
-        // Identifies the IEF widget to which the form belongs.
-        '#ief_id' => $ief_id,
-        // Used by Field API and controller methods to find the relevant
-        // values in $form_state.
-        '#parents' => array_merge($parents, array('form')),
-        // Pass the current entity type.
-        '#entity_type' => $settings['entity_type'],
-        // Pass the langcode of the parent entity,
-        '#parent_language' => $parent_langcode,
-      );
-
-      if ($form_state['inline_entity_form'][$ief_id]['form'] == 'add') {
-        $element['form']['#op'] = 'add';
-        $element['form'] += inline_entity_form_entity_form($controller, $element['form'], $form_state);
-
-        // Hide the cancel button if the reference field is required but
-        // contains no values. That way the user is forced to create an entity.
-        if (!$controller->getSetting('allow_existing') && $instance['required']
-          && empty($form_state['inline_entity_form'][$ief_id]['entities'])
-          && count($settings['create_bundles']) == 1) {
-          $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
-        }
-      }
-      elseif ($form_state['inline_entity_form'][$ief_id]['form'] == 'ief_add_existing') {
-        $element['form'] += inline_entity_form_reference_form($controller, $element['form'], $form_state);
-      }
-
-      // No entities have been added. Remove the outer fieldset to reduce
-      // visual noise caused by having two titles.
-      if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-        $element['#type'] = 'container';
-      }
-    }
-  }
-
-  return $element;
-}
-
-/**
  * Implements hook_form_alter().
  *
  * Adds the IEF submit function and the #ief_submit_all flag to the main submit
@@ -784,14 +304,27 @@ function inline_entity_form_field_widget_form(&$form, &$form_state, $field, $ins
 function inline_entity_form_form_alter(&$form, &$form_state, $form_id) {
   if (!empty($form_state['inline_entity_form'])) {
     $submit = array_merge(array('inline_entity_form_trigger_submit'), $form['#submit']);
+
     if (!empty($form['submit'])) {
       $form['submit']['#submit'] = array_merge($submit, $form['submit']['#submit']);
       $form['submit']['#ief_submit_all'] = TRUE;
     }
-    elseif (!empty($form['actions']['submit'])) {
+
+    if (!empty($form['actions']['submit'])) {
       $form['actions']['submit']['#submit'] = array_merge($submit, $form['actions']['submit']['#submit']);
       $form['actions']['submit']['#ief_submit_all'] = TRUE;
     }
+
+    if (!empty($form['actions']['publish'])) {
+      $form['actions']['publish']['#submit'] = array_merge($submit, $form['actions']['publish']['#submit']);
+      $form['actions']['publish']['#ief_submit_all'] = TRUE;
+    }
+
+    if (!empty($form['actions']['unpublish'])) {
+      $form['actions']['unpublish']['#submit'] = array_merge($submit, $form['actions']['unpublish']['#submit']);
+      $form['actions']['unpublish']['#ief_submit_all'] = TRUE;
+    }
+
   }
 }
 
@@ -803,7 +336,7 @@ function inline_entity_form_update_row_weights($element, &$form_state, $form) {
   // Loop over the submitted delta values and update the weight of the entities
   // in the form state.
   foreach (element_children($element['entities']) as $key) {
-    $form_state['inline_entity_form'][$ief_id]['entities'][$key]['weight'] = $element['entities'][$key]['delta']['#value'];
+    $form_state['inline_entity_form'][$ief_id]['entities'][$key]['_weight'] = $element['entities'][$key]['delta']['#value'];
   }
 }
 
@@ -924,7 +457,7 @@ function inline_entity_form_entity_form_validate(&$entity_form, &$form_state) {
   $controller->entityFormValidate($entity_form, $form_state);
 
   // Unset untriggered conditional fields errors
-  $errors = form_get_errors();
+  $errors = form_get_errors($form_state);
   if ($errors && !empty($form_state['conditional_fields_untriggered_dependents'])) {
     foreach ($form_state['conditional_fields_untriggered_dependents'] as $untriggered_dependents ) {
       if (!empty($untriggered_dependents['errors'])) {
@@ -964,7 +497,7 @@ function inline_entity_form_entity_form_submit($entity_form, &$form_state) {
     // Add the entity to form state, mark it for saving, and close the form.
     $form_state['inline_entity_form'][$ief_id]['entities'][] = array(
       'entity' => $entity_form['#entity'],
-      'weight' => $weight,
+      '_weight' => $weight,
       'form' => NULL,
       'needs_save' => TRUE,
     );
@@ -1077,8 +610,8 @@ function inline_entity_form_reference_form_validate(&$reference_form, &$form_sta
   $controller = inline_entity_form_get_controller($instance);
   $labels = $controller->labels();
 
-  $form_values = drupal_array_get_nested_value($form_state['values'], $reference_form['#parents']);
-  $attach_entity = entity_load_single($entity_type, $form_values['entity_id']);
+  $form_values = NestedArray::getValue($form_state['values'], $reference_form['#parents']);
+  $attach_entity = entity_load($entity_type, $form_values['entity_id']);
 
   // Check to see if entity is already referenced by current IEF widget
   if (!empty($attach_entity)) {
@@ -1108,8 +641,8 @@ function inline_entity_form_reference_form_submit($reference_form, &$form_state)
   $ief_id = $reference_form['#ief_id'];
   $entity_type = $reference_form['#entity_type'];
 
-  $form_values = drupal_array_get_nested_value($form_state['values'], $reference_form['#parents']);
-  $attach_entity = entity_load_single($entity_type, $form_values['entity_id']);
+  $form_values = NestedArray::getValue($form_state['values'], $reference_form['#parents']);
+  $attach_entity = entity_load($entity_type, $form_values['entity_id']);
 
   // Determine the correct weight of the new element.
   $weight = 0;
@@ -1119,7 +652,7 @@ function inline_entity_form_reference_form_submit($reference_form, &$form_state)
 
   $form_state['inline_entity_form'][$ief_id]['entities'][] = array(
     'entity' => $attach_entity,
-    'weight' => $weight,
+    '_weight' => $weight,
     'form' => NULL,
     'needs_save' => FALSE,
   );
@@ -1202,8 +735,7 @@ function inline_entity_form_remove_confirm($form, &$form_state) {
   $controller = inline_entity_form_get_controller($instance);
   $status = $controller->removeFormSubmit($remove_form, $form_state);
   if ($status == IEF_ENTITY_UNLINK_DELETE) {
-    $settings = $form_state['inline_entity_form'][$ief_id]['settings'];
-    list($entity_id) = entity_extract_ids($settings['entity_type'], $remove_form['#entity']);
+    $entity_id = $remove_form['#entity']->id();
     $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
     unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
   }
@@ -1229,7 +761,7 @@ function inline_entity_form_trigger_submit($form, &$form_state) {
     // A specific entity form was submitted, process it and all of its children.
     $array_parents = $form_state['triggering_element']['#array_parents'];
     $array_parents = array_slice($array_parents, 0, -2);
-    $element = drupal_array_get_nested_value($form, $array_parents);
+    $element = NestedArray::getValue($form, $array_parents);
     inline_entity_form_submit($element, $form_state);
   }
 }
@@ -1276,8 +808,8 @@ function inline_entity_form_open_form($form, &$form_state) {
 
   $form_state['rebuild'] = TRUE;
   // Get the current form values.
-  $parents = array_merge($element['#field_parents'], array($element['#field_name'], $element['#language']));
-  $form_values = drupal_array_get_nested_value($form_state['values'], $parents);
+  $parents = array_merge($element['#field_parents'], array($element['#field_name']));
+  $form_values = NestedArray::getValue($form_state['input'], $parents);
 
   $form_state['inline_entity_form'][$ief_id]['form'] = $form_state['triggering_element']['#ief_form'];
   if (!empty($form_values['actions']['bundle'])) {
@@ -1498,20 +1030,20 @@ function inline_entity_form_field_attach_submit($parent_entity_type, $parent_ent
  */
 function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state) {
   $info = entity_get_info($entity_form['#entity_type']);
-  if (empty($info['fieldable'])) {
+  if (!$info->isFieldable()) {
     // The entity type is not fieldable, nothing to cleanup.
     return;
   }
 
-  list(, , $bundle) = entity_extract_ids($entity_form['#entity_type'], $entity_form['#entity']);
+  $bundle = $entity_form['#entity']->bundle();
   $instances = field_info_instances($entity_form['#entity_type'], $bundle);
   foreach ($instances as $instance) {
-    $field_name = $instance['field_name'];
+    $field_name = $instance->getName();
     $parents = $entity_form[$field_name]['#parents'];
     array_pop($parents);
     $langcode = $entity_form[$field_name]['#language'];
     $field_state = array();
-    field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
+    field_form_set_state($parents, $field_name, $form_state, $field_state);
   }
 }
 
@@ -1525,7 +1057,7 @@ function inline_entity_form_get_element($form, $form_state) {
   $array_parents = array_slice($array_parents, 0, -2);
 
   while (!isset($element['#ief_root'])) {
-    $element = drupal_array_get_nested_value($form, $array_parents);
+    $element = NestedArray::getValue($form, $array_parents);
     array_pop($array_parents);
   }
 
@@ -1544,17 +1076,20 @@ function inline_entity_form_get_element($form, $form_state) {
  */
 function inline_entity_form_create_entity($entity_type, $bundle, $language = NULL) {
   $entity_info = entity_get_info($entity_type);
-  $bundle_key = $entity_info['entity keys']['bundle'];
+  $bundle_key = $entity_info->getKey('bundle');
   $default_values = array();
   // If the bundle key exists, it must always be set on an entity.
   if (!empty($bundle_key)) {
     $default_values[$bundle_key] = $bundle;
   }
+
+  /*
   // Set the language if we have both a language key and a language value.
   if (isset($language) && !empty($entity_info['entity keys']['language'])) {
     $language_key = $entity_info['entity keys']['language'];
     $default_values[$language_key] = $language;
   }
+  */
 
   return entity_create($entity_type, $default_values);
 }
@@ -1601,13 +1136,12 @@ function theme_inline_entity_form_entity_table($variables) {
   $rows = array();
   foreach (element_children($form) as $key) {
     $entity = $form[$key]['#entity'];
-    list($entity_id) = entity_extract_ids($entity_type, $entity);
     // Many field formatters (such as the ones for files and images) need
     // certain data that might be missing on unsaved entities because the field
     // load hooks haven't run yet. Because of that, those hooks are invoked
     // explicitly. This is the same trick used by node_preview().
     if ($form[$key]['#needs_save']) {
-      _field_invoke_multiple('load', $entity_type, array($entity_id => $entity));
+//      _field_invoke_multiple('load', $entity_type, array($entity_id => $entity));
     }
 
     $row_classes = array('ief-row-entity');
@@ -1624,40 +1158,11 @@ function theme_inline_entity_form_entity_table($variables) {
     }
 
     // Add fields that represent the entity.
-    $wrapper = entity_metadata_wrapper($entity_type, $entity);
     foreach ($fields as $field_name => $field) {
-      if ($field['type'] == 'property') {
-        $property = $wrapper->{$field_name};
-        // label() returns human-readable versions of token and list properties.
-        $data = $property->label() ? $property->label() : $property->value();
-        $data = check_plain($data);
-      }
-      elseif ($field['type'] == 'field') {
-        $display = array(
-          'label' => 'hidden',
-        ) + $field;
-        // The formatter needs to be under the 'type' key.
-        if (isset($display['formatter'])) {
-          $display['type'] = $display['formatter'];
-          unset($display['formatter']);
-        }
-
-        $renderable_data = field_view_field($entity_type, $entity, $field_name, $display);
-        // The field has specified an exact delta to display.
-        if (isset($field['delta'])) {
-          if (!empty($renderable_data[$field['delta']])) {
-            $renderable_data = $renderable_data[$field['delta']];
-          }
-          else {
-            // The field has no value for the specified delta, show nothing.
-            $renderable_data = array();
-          }
-        }
-        $data = drupal_render($renderable_data);
-      }
-
+      $data = $entity->get($field_name)->getString();
       $cells[] = array('data' => $data, 'class' => array('inline-entity-form-' . $entity_type . '-' . $field_name));
     }
+
     // Add the buttons belonging to the "Operations" column.
     $cells[] = drupal_render($form[$key]['actions']);
     // Create the row.
@@ -1672,11 +1177,19 @@ function theme_inline_entity_form_entity_table($variables) {
     }
   }
 
+  $tabledrag = array();
+
   if (!empty($rows)) {
     $id = 'ief-entity-table-' . $form['#id'];
     if ($has_tabledrag) {
       // Add the tabledrag JavaScript.
-      drupal_add_tabledrag($id, 'order', 'sibling', 'ief-entity-delta');
+      $tabledrag = array(
+        array(
+          'action' => 'order',
+          'relationship' => 'sibling',
+          'group' => 'ief-entity-delta',
+        )
+      );
     }
 
     // Return the themed table.
@@ -1684,7 +1197,16 @@ function theme_inline_entity_form_entity_table($variables) {
       'id' => $id,
       'class' => array('ief-entity-table'),
     );
-    return theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'attributes' => $table_attributes));
+
+    $table = array(
+      '#type' => 'table',
+      '#header' => $header,
+      '#rows' => $rows,
+      '#attributes' => $table_attributes,
+      '#tabledrag' => $tabledrag,
+    );
+
+    return drupal_render($table);
   }
 }
 
