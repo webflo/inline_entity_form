@@ -409,14 +409,18 @@ class InlineEntityFormMultiple extends WidgetBase {
     if ($key_exists) {
       $values = $values['entities'];
 
+      // Remove the 'value' of the 'add more' button.
+      unset($values['add_more']);
+
       foreach ($values as $delta => &$item) {
         if ($item['needs_save']) {
           $item['entity']->save();
         }
+        if ($item['delete']) {
+          $item['entity']->delete();
+          unset($items[$delta]);
+        }
       }
-
-      // Remove the 'value' of the 'add more' button.
-      unset($values['add_more']);
 
       // Let the widget turn the submitted values into actual field values.
       // Make sure the '_weight' entries are persisted in the process.
@@ -454,17 +458,6 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
 
       field_form_set_state($form['#parents'], $field_name, $form_state, $field_state);
-
-      foreach ($items as $delta => $item) {
-        if ($item->needs_save) {
-          $item->entity->save();
-          $item->set('entity', $item->entity);
-        }
-        if (!empty($item->delete)) {
-          $item->entity->delete();
-          unset($items[$delta]);
-        }
-      }
     }
   }
 

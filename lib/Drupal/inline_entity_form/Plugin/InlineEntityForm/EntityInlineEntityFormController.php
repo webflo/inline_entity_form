@@ -252,77 +252,7 @@ class EntityInlineEntityFormController {
     $child_form = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
     $child_form->setEntity($entity);
     $entity_form = $child_form->buildForm($entity_form, $child_form_state);
-
     return $entity_form;
-
-    $form_display_id = $entity->entityType() . '.' . $entity->bundle() . '.' . 'default';
-    $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
-
-    field_attach_form($entity, $entity_form, $child_form_state);
-    return $entity_form;
-
-    if (isset($form_state['inline_entity_form'][$entity_form['#ief_id']]['new_entity'])) {
-      $entity = $form_state['inline_entity_form'][$entity_form['#ief_id']]['new_entity']['entity'];
-      unset($form_state['inline_entity_form'][$entity_form['#ief_id']]['new_entity']);
-    }
-
-    /*
-    $entity_form += entity_get_form($entity, 'default', $form_state);
-    */
-
-    $this->formController = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
-    $this->formController->setEntity($entity);
-
-//    $form_display_id = $entity->entityType() . '.' . $entity->bundle() . '.' . 'default';
-//    $form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
-
-    $child_form_state['values'] = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
-
-//    $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
-
-    $entity_form = $this->formController->buildForm($entity_form, $child_form_state);
-
-    $form_state['ief_form_controller'] = $this->formController;
-//    $form_state['ief_entity_form_display'] = entity_load('entity_form_display', $form_display_id);
-
-    return $entity_form;
-
-    /*
-    $node = $entity_form['#entity'];
-    $type = node_type_load($node->bundle());
-    $extra_fields = field_info_extra_fields('node', $node->bundle(), 'form');
-
-    // Do some prep work on the node, similarly to node_form().
-    if (!isset($node->title)) {
-      $node->title = NULL;
-    }
-
-//    node_object_prepare($node);
-
-    $entity_form['title'] = array(
-      '#type' => 'textfield',
-      '#title' => check_plain($type->title_label),
-      '#required' => TRUE,
-      '#default_value' => $node->title->value,
-      '#maxlength' => 255,
-      // The label might be missing if the Title module has replaced it.
-      '#weight' => !empty($extra_fields['title']) ? $extra_fields['title']['weight'] : -5,
-    );
-    $entity_form['status'] = array(
-      '#type' => 'radios',
-      '#access' => user_access('administer nodes'),
-      '#title' => t('Status'),
-      '#default_value' => $node->status->value,
-      '#options' => array(1 => t('Published'), 0 => t('Unpublished')),
-      '#required' => TRUE,
-      '#weight' => 99,
-    );
-
-    $langcode = $node->language()->id;
-    field_attach_form($node, $entity_form, $form_state, $langcode);
-
-    return $entity_form;
-    */
   }
 
   /**
@@ -356,10 +286,21 @@ class EntityInlineEntityFormController {
    */
   public function entityFormSubmit(&$entity_form, &$form_state) {
     $entity = $entity_form['#entity'];
-    if (!empty($entity->inline_entity_form_file_field_widget_submit)) {
-      unset($entity->inline_entity_form_file_field_widget_submit);
-      return;
-    }
+//    $controller = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
+//    $controller->setEntity($entity);
+//
+//    $child_form = $entity_form;
+//    $child_form_state = $form_state;
+//    $form_display_id = $entity->entityType() . '.' . $entity->bundle() . '.' . 'default';
+//    $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
+//    $entity_form['#entity'] = $controller->submit($entity_form, $child_form_state);
+//    return
+//
+//    $entity = $entity_form['#entity'];
+//    if (!empty($entity->inline_entity_form_file_field_widget_submit)) {
+//      unset($entity->inline_entity_form_file_field_widget_submit);
+//      return;
+//    }
 
     $operation = 'default';
 
