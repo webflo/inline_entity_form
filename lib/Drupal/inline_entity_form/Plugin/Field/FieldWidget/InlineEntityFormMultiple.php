@@ -409,6 +409,12 @@ class InlineEntityFormMultiple extends WidgetBase {
     if ($key_exists) {
       $values = $values['entities'];
 
+      foreach ($values as $delta => &$item) {
+        if ($item['needs_save']) {
+          $item['entity']->save();
+        }
+      }
+
       // Remove the 'value' of the 'add more' button.
       unset($values['add_more']);
 

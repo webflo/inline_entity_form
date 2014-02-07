@@ -116,7 +116,10 @@ function inline_entity_form_get_controller($instance) {
  * Implements hook_entity_info_alter().
  */
 function inline_entity_form_entity_info_alter(&$entity_info) {
-  $entity_info['node']->setController('inline entity form', '\Drupal\inline_entity_form\Plugin\InlineEntityForm\NodeInlineEntityFormController');
+  /**
+   * @var \Drupal\Core\Entity\EntityType[] $entity_info
+   */
+  $entity_info['node']->setFormClass('inline entity form', '\Drupal\inline_entity_form\Plugin\InlineEntityForm\NodeInlineEntityFormController');
 
   /*
   if (isset($entity_info['taxonomy_term'])) {
@@ -169,6 +172,8 @@ function inline_entity_form_product_status_options_list() {
  * @todo Remove when there's a stable contrib module for this.
  */
 function inline_entity_form_entity_delete($entity, $type) {
+  return;
+
   $entity_info = entity_get_info($type);
   list(,, $bundle) = entity_extract_ids($type, $entity);
   foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
@@ -961,61 +966,6 @@ function inline_entity_form_required_field($element, &$form_state, $form) {
 }
 
 /**
- * Implements hook_field_attach_submit().
- */
-function inline_entity_form_field_attach_submit($parent_entity_type, $parent_entity, $form, &$form_state) {
-  list(, , $bundle_name) = entity_extract_ids($parent_entity_type, $parent_entity);
-
-  foreach (field_info_instances($parent_entity_type, $bundle_name) as $instance_name => $instance) {
-    if (isset($instance['widget']) && strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
-      $field_name = $instance['field_name'];
-      if (!isset($form[$field_name])) {
-        // The field wasn't found on this form, skip it.
-        // Usually happens on stub entity forms that don't contain all fields.
-        continue;
-      }
-      $langcode = $form[$field_name]['#language'];
-      $ief_id = $form[$field_name][$langcode]['#ief_id'];
-      if (empty($form_state['inline_entity_form'][$ief_id])) {
-        // No data found, no need to do anything.
-        continue;
-      }
-
-      $values = $form_state['inline_entity_form'][$ief_id];
-      $entity_type = $values['settings']['entity_type'];
-      $controller = inline_entity_form_get_controller($instance);
-      $context = array(
-        'parent_entity_type' => $parent_entity_type,
-        'parent_entity' => $parent_entity,
-      );
-
-      // Delete any entities staged for deletion.
-      if (!empty($values['delete'])) {
-        $controller->delete(array_values($values['delete']), $context);
-      }
-
-      // Respect the entity weights.
-      uasort($values['entities'], 'drupal_sort_weight');
-      // Go through the IEF data and assemble a list of ids.
-      $entity_ids = array();
-      foreach ($values['entities'] as $item) {
-        if ($item['needs_save']) {
-          $controller->save($item['entity'], $context);
-        }
-
-        list($entity_id) = entity_extract_ids($entity_type, $item['entity']);
-        $entity_ids[] = array($values['settings']['column'] => $entity_id);
-      }
-
-      if (!empty($entity_ids)) {
-        // Set the list of ids as the field value.
-        $parent_entity->{$field_name}[$langcode] = $entity_ids;
-      }
-    }
-  }
-}
-
-/**
  * Cleans up the form state for a submitted entity form.
  *
  * After field_attach_submit() has run and the form has been closed, the form
@@ -1041,7 +991,6 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
     $field_name = $instance->getName();
     $parents = $entity_form[$field_name]['#parents'];
     array_pop($parents);
-    $langcode = $entity_form[$field_name]['#language'];
     $field_state = array();
     field_form_set_state($parents, $field_name, $form_state, $field_state);
   }
@@ -1250,4 +1199,65 @@ function inline_entity_form_pre_render_add_fieldset_markup($form) {
   }
 
   return $form;
+}
+
+function inline_entity_form_element_info_alter(&$types) {
+  $types['managed_file']['#process'][] = 'inline_entity_form_file_field_widget_process';
+}
+
+function inline_entity_form_file_field_widget_process($element, &$form_state, $form) {
+  foreach (array('upload_button', 'remove_button') as $key) {
+//    $element[$key]['#submit'][] = 'inline_entity_form_file_field_widget_submit';
+  }
+
+  return $element;
+}
+
+function inline_entity_form_file_field_widget_submit(&$form, &$form_state) {
+    // During the form rebuild, file_field_widget_form() will create field item
+  // widget elements using re-indexed deltas, so clear out $form_state['input']
+  // to avoid a mismatch between old and new deltas. The rebuilt elements will
+  // have #default_value set appropriately for the current state of the field,
+  // so nothing is lost in doing this.
+  // $parents = array_slice($form_state['triggering_element']['#parents'], 0, -2);
+  // NestedArray::setValue($form_state['input'], $parents, NULL);
+
+  $button = $form_state['triggering_element'];
+
+  // Go one level up in the form, to the widgets container.
+  $element = NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -1));
+  $field_name = $element['#field_name'];
+  $parents = $element['#field_parents'];
+
+  // Fetch submitted values
+  $ief = inline_entity_form_get_element($form, $form_state);
+  $submitted_values = NestedArray::getValue($form_state['values'], array_slice($button['#parents'], 0, -2));
+
+  $delta = array_slice($parents, -2, 1);
+  $delta = reset($delta);
+
+  // Create new form element
+  if (!is_numeric($delta)) {
+    $form_state['inline_entity_form'][$ief['#ief_id']]['entities'][] = array();
+    end($form_state['inline_entity_form'][$ief['#ief_id']]['entities']);
+    $delta = key($form_state['inline_entity_form'][$ief['#ief_id']]['entities']);
+  }
+
+  // Reference for the current field item.
+  $ief_item = &$form_state['inline_entity_form'][$ief['#ief_id']]['entities'][$delta];
+
+  $fids = array();
+  foreach ($submitted_values as $value) {
+    $fids[] = reset($value['fids']);
+  }
+
+  if (!isset($ief_item['entity'])) {
+    $ief_item['entity'] = $element['#entity'];
+  }
+  $ief_item['entity']->set($field_name, $fids);
+  $ief_item['entity']->inline_entity_form_file_field_widget_submit = TRUE;
+  $ief_item['needs_save'] = TRUE;
+  $ief_item['_weight'] = (string) $delta;
+
+  $form_state['inline_entity_form'][$ief['#ief_id']]['new_entity'] = $ief_item;
 }
