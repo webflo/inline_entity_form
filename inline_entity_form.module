@@ -991,8 +991,10 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
     $field_name = $instance->getName();
     $parents = $entity_form[$field_name]['#parents'];
     array_pop($parents);
-    $field_state = array();
-    field_form_set_state($parents, $field_name, $form_state, $field_state);
+    if (is_array($parents)) {
+      $field_state = array();
+      field_form_set_state($parents, $field_name, $form_state, $field_state);
+    }
   }
 }
 
