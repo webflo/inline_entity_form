@@ -470,8 +470,10 @@ class InlineEntityFormMultiple extends WidgetBase {
     // Convert form values to actual entity reference values.
     foreach($values as $value) {
       $item = $value;
-      $item['target_id'] = $item['entity']->id();
-      $items[] = $item;
+      if (isset($item['entity'])) {
+        $item['target_id'] = $item['entity']->id();
+        $items[] = $item;
+      }
     }
 
     return $items;
