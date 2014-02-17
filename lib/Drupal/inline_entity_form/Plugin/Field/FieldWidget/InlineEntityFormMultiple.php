@@ -41,6 +41,22 @@ class InlineEntityFormMultiple extends WidgetBase {
    */
   protected $iefController;
 
+  protected $iefId;
+
+  /**
+   * @param mixed $iefId
+   */
+  public function setIefId($iefId) {
+    $this->iefId = $iefId;
+  }
+
+  /**
+   * @return mixed
+   */
+  public function getIefId() {
+    return $this->iefId;
+  }
+
   function initializeIefController() {
     if (!isset($this->iefController)) {
       $this->iefController = inline_entity_form_get_controller($this->fieldDefinition);
@@ -53,7 +69,6 @@ class InlineEntityFormMultiple extends WidgetBase {
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, array &$form_state) {
     $this->entityManager = \Drupal::entityManager();
     $settings = $this->getFieldSettings();
-
 
     $entity_info = $this->entityManager->getDefinition($settings['target_type']);
     $cardinality = $this->fieldDefinition->getCardinality();
@@ -71,31 +86,32 @@ class InlineEntityFormMultiple extends WidgetBase {
       $element['#field_name']
     ));
 
-    // Get the langcode of the parent entity.
-    $parent_langcode = $element['#entity']->language()->id;
-
     // Assign a unique identifier to each IEF widget.
     // Since $parents can get quite long, sha1() ensures that every id has
     // a consistent and relatively short length while maintaining uniqueness.
-    $ief_id = sha1(implode('-', $parents));
+    $this->setIefId(sha1(implode('-', $parents)));
+
+    // Get the langcode of the parent entity.
+    $parent_langcode = $element['#entity']->language()->id;
+
     // Determine the wrapper ID for the entire element.
-    $wrapper = 'inline-entity-form-' . $ief_id;
+    $wrapper = 'inline-entity-form-' . $this->getIefId();
 
     $element = array(
-      '#type' => 'fieldset',
-      '#tree' => TRUE,
-      '#description' => NULL,
-      '#prefix' => '<div id="' . $wrapper . '">',
-      '#suffix' => '</div>',
-      '#ief_id' => $ief_id,
-      '#ief_root' => TRUE,
-    ) + $element;
+        '#type' => 'fieldset',
+        '#tree' => TRUE,
+        '#description' => NULL,
+        '#prefix' => '<div id="' . $wrapper . '">',
+        '#suffix' => '</div>',
+        '#ief_id' => $this->getIefId(),
+        '#ief_root' => TRUE,
+      ) + $element;
 
     $element['#attached']['js'][] = drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js';
 
     // Initialize the IEF array in form state.
-    if (empty($form_state['inline_entity_form'][$ief_id])) {
-      $form_state['inline_entity_form'][$ief_id] = array(
+    if (empty($form_state['inline_entity_form'][$this->getIefId()])) {
+      $form_state['inline_entity_form'][$this->getIefId()] = array(
         'form' => NULL,
         'settings' => $settings,
         'instance' => $this->fieldDefinition,
@@ -103,28 +119,18 @@ class InlineEntityFormMultiple extends WidgetBase {
 
       // Load the entities from the $items array and store them in the form
       // state for further manipulation.
-      $form_state['inline_entity_form'][$ief_id]['entities'] = array();
+      $form_state['inline_entity_form'][$this->getIefId()]['entities'] = array();
 
       if (count($items)) {
-        $entity_ids = array();
-        foreach ($items as $item) {
-          $entity_ids[] = $item->target_id;
-        }
-
-        $delta = 0;
-
-        // @fixme.
-        $entity_ids = array_filter($entity_ids);
-
-        foreach (entity_load_multiple($settings['target_type'], $entity_ids) as $entity) {
-          $form_state['inline_entity_form'][$ief_id]['entities'][$delta] = array(
-            'entity' => $entity,
-            '_weight' => $delta,
-            'form' => NULL,
-            'needs_save' => FALSE,
-          );
-
-          $delta++;
+        foreach ($items as $delta => $item) {
+          if ($item->entity && is_object($item->entity)) {
+            $form_state['inline_entity_form'][$this->getIefId()]['entities'][$delta] = array(
+              'entity' => $item->entity,
+              '_weight' => $delta,
+              'form' => NULL,
+              'needs_save' => FALSE,
+            );
+          }
         }
       }
     }
@@ -155,9 +161,14 @@ class InlineEntityFormMultiple extends WidgetBase {
     drupal_alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
 
-    foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as $key => $value) {
+    foreach ($form_state['inline_entity_form'][$this->getIefId()]['entities'] as $key => $value) {
+      if (!isset($value['entity'])) {
+        continue;
+      }
+
       // Data used by theme_inline_entity_form_entity_table().
       $element['entities'][$key]['#entity'] = $entity = $value['entity'];
+      $element['entities'][$key]['#item'] = $items->offsetGet($key);
       $element['entities'][$key]['#needs_save'] = $value['needs_save'];
 
       // Handle row weights.
@@ -165,6 +176,7 @@ class InlineEntityFormMultiple extends WidgetBase {
 
       // First check to see if this entity should be displayed as a form.
       if (!empty($value['form'])) {
+        $element['entities'][$key]['title'] = array();
         $element['entities'][$key]['delta'] = array(
           '#type' => 'value',
           '#value' => $value['_weight'],
@@ -182,7 +194,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           // Pass the langcode of the parent entity,
           '#parent_language' => $parent_langcode,
           // Identifies the IEF widget to which the form belongs.
-          '#ief_id' => $ief_id,
+          '#ief_id' => $this->getIefId(),
           // Identifies the table row to which the form belongs.
           '#ief_row_delta' => $key,
         );
@@ -199,6 +211,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
       else {
         $row = & $element['entities'][$key];
+        $row['title'] = array();
         $row['delta'] = array(
           '#type' => 'weight',
           '#delta' => 50,
@@ -217,7 +230,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           $row['actions']['ief_entity_edit'] = array(
             '#type' => 'submit',
             '#value' => t('Edit'),
-            '#name' => 'ief-' . $ief_id . '-entity-edit-' . $key,
+            '#name' => 'ief-' . $this->getIefId() . '-entity-edit-' . $key,
             '#limit_validation_errors' => array(),
             '#ajax' => array(
               'callback' => 'inline_entity_form_get_element',
@@ -236,7 +249,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           $row['actions']['ief_entity_remove'] = array(
             '#type' => 'submit',
             '#value' => t('Remove'),
-            '#name' => 'ief-' . $ief_id . '-entity-remove-' . $key,
+            '#name' => 'ief-' . $this->getIefId() . '-entity-remove-' . $key,
             '#limit_validation_errors' => array(),
             '#ajax' => array(
               'callback' => 'inline_entity_form_get_element',
@@ -250,7 +263,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
     }
 
-    $entity_count = count($form_state['inline_entity_form'][$ief_id]['entities']);
+    $entity_count = count($form_state['inline_entity_form'][$this->getIefId()]['entities']);
     if ($cardinality > 1) {
       // Add a visual cue of cardinality count.
       $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
@@ -269,15 +282,15 @@ class InlineEntityFormMultiple extends WidgetBase {
 
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
-    if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
       if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->iefController->getSetting('allow_existing')) {
         $bundle = reset($settings['handler_settings']['target_bundles']);
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
         if ($element['#entity_type'] != $settings['entity_type'] || $element['#bundle'] != $bundle) {
-          $form_state['inline_entity_form'][$ief_id]['form'] = 'add';
-          $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+          $form_state['inline_entity_form'][$this->getIefId()]['form'] = 'add';
+          $form_state['inline_entity_form'][$this->getIefId()]['form settings'] = array(
             'bundle' => $bundle,
           );
         }
@@ -285,7 +298,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
 
     // If no form is open, show buttons that open one.
-    if (empty($form_state['inline_entity_form'][$ief_id]['form'])) {
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['form'])) {
       $element['actions'] = array(
         '#attributes' => array('class' => array('container-inline')),
         '#type' => 'container',
@@ -318,7 +331,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         $element['actions']['ief_add'] = array(
           '#type' => 'submit',
           '#value' => t('Add new @type_singular', array('@type_singular' => $labels['singular'])),
-          '#name' => 'ief-' . $ief_id . '-add',
+          '#name' => 'ief-' . $this->getIefId() . '-add',
           '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
           '#ajax' => array(
             'callback' => 'inline_entity_form_get_element',
@@ -333,7 +346,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         $element['actions']['ief_add_existing'] = array(
           '#type' => 'submit',
           '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
-          '#name' => 'ief-' . $ief_id . '-add-existing',
+          '#name' => 'ief-' . $this->getIefId() . '-add-existing',
           '#limit_validation_errors' => array(array_merge($parents, array('actions'))),
           '#ajax' => array(
             'callback' => 'inline_entity_form_get_element',
@@ -350,7 +363,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#type' => 'fieldset',
         '#attributes' => array('class' => array('ief-form', 'ief-form-bottom')),
         // Identifies the IEF widget to which the form belongs.
-        '#ief_id' => $ief_id,
+        '#ief_id' => $this->getIefId(),
         // Used by Field API and controller methods to find the relevant
         // values in $form_state.
         '#parents' => array_merge($parents, array('form')),
@@ -360,26 +373,26 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#parent_language' => $parent_langcode,
       );
 
-      if ($form_state['inline_entity_form'][$ief_id]['form'] == 'add') {
+      if ($form_state['inline_entity_form'][$this->getIefId()]['form'] == 'add') {
         $element['form']['#op'] = 'add';
         $element['form'] += inline_entity_form_entity_form($this->iefController, $element['form'], $form_state);
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
         if (!$this->iefController->getSetting('allow_existing') && $this->fieldDefinition->isRequired()
-          && empty($form_state['inline_entity_form'][$ief_id]['entities'])
+          && empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])
           && count($settings['handler_settings']['target_bundles']) == 1
         ) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
       }
-      elseif ($form_state['inline_entity_form'][$ief_id]['form'] == 'ief_add_existing') {
+      elseif ($form_state['inline_entity_form'][$this->getIefId()]['form'] == 'ief_add_existing') {
         $element['form'] += inline_entity_form_reference_form($this->iefController, $element['form'], $form_state);
       }
 
       // No entities have been added. Remove the outer fieldset to reduce
       // visual noise caused by having two titles.
-      if (empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
+      if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
         $element['#type'] = 'container';
       }
     }
@@ -393,17 +406,8 @@ class InlineEntityFormMultiple extends WidgetBase {
   public function extractFormValues(FieldItemListInterface $items, array $form, array &$form_state) {
     $field_name = $this->fieldDefinition->getName();
 
-    // Extract the values from $form_state['values'].
-//    $path = array_merge($form['#parents'], array($field_name));
-//    $key_exists = NULL;
-
-//    $values = NestedArray::getValue($form_state['values'], $path, $key_exists);
-
-    $parents = array($field_name);
-    $ief_id = sha1(implode('-', $parents));
-
     $key_exists = NULL;
-    $path = array_merge(array('inline_entity_form'), array($ief_id));
+    $path = array_merge(array('inline_entity_form'), array($this->getIefId()));
     $values = NestedArray::getValue($form_state, $path, $key_exists);
 
     if ($key_exists) {
@@ -412,11 +416,12 @@ class InlineEntityFormMultiple extends WidgetBase {
       // Remove the 'value' of the 'add more' button.
       unset($values['add_more']);
 
+      // @todo: remove the duplicate entity save.
       foreach ($values as $delta => &$item) {
-        if ($item['needs_save']) {
+        if (!empty($item['needs_save'])) {
           $item['entity']->save();
         }
-        if ($item['delete']) {
+        if (!empty($item['delete'])) {
           $item['entity']->delete();
           unset($items[$delta]);
         }
@@ -468,7 +473,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $items = array();
 
     // Convert form values to actual entity reference values.
-    foreach($values as $value) {
+    foreach ($values as $value) {
       $item = $value;
       if (isset($item['entity'])) {
         $item['target_id'] = $item['entity']->id();
