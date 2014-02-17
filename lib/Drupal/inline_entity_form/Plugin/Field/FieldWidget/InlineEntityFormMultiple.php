@@ -405,6 +405,9 @@ class InlineEntityFormMultiple extends WidgetBase {
    */
   public function extractFormValues(FieldItemListInterface $items, array $form, array &$form_state) {
     $field_name = $this->fieldDefinition->getName();
+    $parents = array($field_name);
+    $ief_id = sha1(implode('-', $parents));
+    $this->setIefId($ief_id);
 
     $key_exists = NULL;
     $path = array_merge(array('inline_entity_form'), array($this->getIefId()));
