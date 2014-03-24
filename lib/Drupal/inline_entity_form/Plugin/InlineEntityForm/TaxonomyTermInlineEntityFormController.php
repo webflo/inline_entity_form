@@ -28,7 +28,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   public function tableFields($bundles) {
     $fields = array();
 
-    $info = entity_get_info($this->entityType);
+    $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $metadata = entity_get_property_info($this->entityType);
 
     $label_key = $info['entity_keys']['label'];

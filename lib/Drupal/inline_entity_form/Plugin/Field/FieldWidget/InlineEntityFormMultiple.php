@@ -416,8 +416,21 @@ class InlineEntityFormMultiple extends WidgetBase {
     if ($key_exists) {
       $values = $values['entities'];
 
-      // Remove the 'value' of the 'add more' button.
-      unset($values['add_more']);
+      // Account for drag-and-drop reordering if needed.
+      if (!$this->handlesMultipleValues()) {
+        // Remove the 'value' of the 'add more' button.
+        unset($values['add_more']);
+
+        // The original delta, before drag-and-drop reordering, is needed to
+        // route errors to the corect form element.
+        foreach ($values as $delta => &$value) {
+          $value['_original_delta'] = $delta;
+        }
+
+        usort($values, function ($a, $b) {
+          return SortArray::sortByKeyInt($a, $b, '_weight');
+        });
+      }
 
       // @todo: remove the duplicate entity save.
       foreach ($values as $delta => &$item) {
@@ -430,39 +443,18 @@ class InlineEntityFormMultiple extends WidgetBase {
         }
       }
 
-      // Let the widget turn the submitted values into actual field values.
-      // Make sure the '_weight' entries are persisted in the process.
-      $weights = array();
-      // Check that $values[0] is an array, because if it's a string, then in
-      // PHP 5.3, ['_weight'] returns the first character.
-      if (isset($values[0]) && is_array($values[0]) && isset($values[0]['_weight'])) {
-        foreach ($values as $delta => $value) {
-          $weights[$delta] = $value['_weight'];
-        }
-      }
-      $items->setValue($this->massageFormValues($values, $form, $form_state));
+      // Let the widget massage the submitted values.
+      $values = $this->massageFormValues($values, $form, $form_state);
 
-      foreach ($items as $delta => $item) {
-        // Put back the weight.
-        if (isset($weights[$delta])) {
-          $item->_weight = $weights[$delta];
-        }
-        // The tasks below are going to reshuffle deltas. Keep track of the
-        // original deltas for correct reporting of errors in flagErrors().
-        $item->_original_delta = $delta;
-      }
-
-      // Account for drag-n-drop reordering.
-      $this->sortItems($items);
-
-      // Remove empty values.
-      $items->filterEmptyValues();
+      // Assign the values and remove the empty ones.
+      $items->setValue($values);
+      $items->filterEmptyItems();
 
       // Put delta mapping in $form_state, so that flagErrors() can use it.
       $field_state = field_form_get_state($form['#parents'], $field_name, $form_state);
       foreach ($items as $delta => $item) {
-        $field_state['original_deltas'][$delta] = $item->_original_delta;
-        unset($item->_original_delta);
+        $field_state['original_deltas'][$delta] = isset($item->_original_delta) ? $item->_original_delta : $delta;
+        unset($item->_original_delta, $item->_weight);
       }
 
       field_form_set_state($form['#parents'], $field_name, $form_state, $field_state);

@@ -102,7 +102,7 @@ function inline_entity_form_get_controller($instance) {
   $field = field_info_field($instance['field_name']);
   $type_settings = $instance['widget']['settings']['type_settings'];
   $ief_settings = inline_entity_form_settings($field, $instance);
-  $entity_info = entity_get_info($ief_settings['entity_type']);
+  $entity_info = \Drupal::entityManager()->getDefinition($ief_settings['entity_type']);
   // The current entity type is not supported, execution can't continue.
   if (!isset($entity_info['inline entity form'])) {
     return FALSE;
@@ -174,7 +174,7 @@ function inline_entity_form_product_status_options_list() {
 function inline_entity_form_entity_delete($entity, $type) {
   return;
 
-  $entity_info = entity_get_info($type);
+  $entity_info = \Drupal::entityManager()->getDefinition($type);
   list(,, $bundle) = entity_extract_ids($type, $entity);
   foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
     if (strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
@@ -261,7 +261,7 @@ function inline_entity_form_field_widget_settings_form($field, $instance) {
   // Add entity type specific settings if they exist.
   $settings_form = $controller->settingsForm($field, $instance);
   if (!empty($settings_form)) {
-    $entity_info = entity_get_info($controller->getEntityType());
+    $entity_info = \Drupal::entityManager()->getDefinition($controller->getEntityType());
     $element['type_settings'] = array(
       '#type' => 'fieldset',
       '#title' => t('Inline Entity Form: %type', array('%type' => $entity_info['label'])),
@@ -988,13 +988,13 @@ function inline_entity_form_required_field($element, &$form_state, $form) {
  *   The form state of the parent form.
  */
 function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state) {
-  $info = entity_get_info($entity_form['#entity_type']);
+  $info = \Drupal::entityManager()->getDefinition($entity_form['#entity_type']);
   if (!$info->isFieldable()) {
     // The entity type is not fieldable, nothing to cleanup.
     return;
   }
 
-  $bundle = $entity_form['#entity']->getBundle();
+  $bundle = $entity_form['#entity']->bundle();
   $instances = field_info_instances($entity_form['#entity_type'], $bundle);
   foreach ($instances as $instance) {
     $field_name = $instance->getName();
@@ -1035,7 +1035,7 @@ function inline_entity_form_get_element($form, $form_state) {
  *   (Optional) The language to set, if the entity has a language key.
  */
 function inline_entity_form_create_entity($entity_type, $bundle, $language = NULL) {
-  $entity_info = entity_get_info($entity_type);
+  $entity_info = \Drupal::entityManager()->getDefinition($entity_type);
   $bundle_key = $entity_info->getKey('bundle');
   $default_values = array();
   // If the bundle key exists, it must always be set on an entity.
