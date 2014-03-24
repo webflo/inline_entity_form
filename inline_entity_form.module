@@ -1065,7 +1065,10 @@ function theme_inline_entity_form_entity_table($variables) {
   $entity_type = $form['#entity_type'];
   $fields = $form['#table_fields'];
   // Sort the fields by weight.
-  uasort($fields, 'drupal_sort_weight');
+  uasort($fields, array(
+    '\Drupal\Component\Utility\SortArray',
+    'sortByWeightElement'
+  ));
   // If one of the rows is in form context, disable tabledrag.
   $has_tabledrag = TRUE;
   foreach (element_children($form) as $key) {

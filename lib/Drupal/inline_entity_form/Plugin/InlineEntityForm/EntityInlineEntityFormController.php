@@ -248,10 +248,10 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
 
     $child_form_state = $form_state;
-    $form_display_id = $entity->getEntityType() . '.' . $entity->getBundle() . '.' . 'default';
+    $form_display_id = $entity->getEntityType()->id() . '.' . $entity->getBundle() . '.' . 'default';
     $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
 
-    $child_form = \Drupal::entityManager()->getFormController($entity->getEntityType(), 'default');
+    $child_form = \Drupal::entityManager()->getFormController($entity->getEntityType()->id(), 'default');
     $child_form->setEntity($entity);
     $entity_form = $child_form->buildForm($entity_form, $child_form_state);
     return $entity_form;
@@ -309,7 +309,7 @@ class EntityInlineEntityFormController {
     $child_form['#entity'] = $entity;
 
     $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->getEntityType(), $operation);
+    $controller = \Drupal::entityManager()->getFormController($entity->getEntityType()->id(), $operation);
     $controller->setEntity($entity);
     $child_form_state['build_info']['callback_object'] = $controller;
     $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
@@ -319,7 +319,7 @@ class EntityInlineEntityFormController {
     $child_form_state['values']['menu'] = array();
     $child_form_state['buttons'] = array();
 
-    $this->formController = \Drupal::entityManager()->getFormController($entity->getEntityType(), 'default');
+    $this->formController = \Drupal::entityManager()->getFormController($entity->getEntityType()->id(), 'default');
     $this->formController->setEntity($entity);
     $child_form = $this->formController->buildForm($child_form, $child_form_state);
 
