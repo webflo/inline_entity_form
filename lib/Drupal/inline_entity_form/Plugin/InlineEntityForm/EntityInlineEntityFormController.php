@@ -8,6 +8,7 @@
 namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 
 use \Drupal\Component\Utility\NestedArray;
+use Drupal;
 
 class EntityInlineEntityFormController {
 
@@ -49,7 +50,7 @@ class EntityInlineEntityFormController {
 
     return $labels;
 
-    $info = entity_get_info($this->entityType);
+    $info = \Drupal::entityManager()->getDefinition($this->entityType);
     // Commerce and its contribs declare permission labels that can be used
     // for more precise and user-friendly strings.
     if (!empty($info['permission labels'])) {
@@ -82,8 +83,9 @@ class EntityInlineEntityFormController {
    *   - delta: If provided, limits the field to just the specified delta.
    */
   public function tableFields($bundles) {
-    $info = entity_get_info($this->entityType);
-    $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
+    $info = \Drupal::entityManager()->getDefinition($this->entityType);
+    // $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
+    $metadata = array();
 
     $fields = array();
     if ($info->hasKey('label')) {
@@ -246,10 +248,10 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
 
     $child_form_state = $form_state;
-    $form_display_id = $entity->entityType() . '.' . $entity->bundle() . '.' . 'default';
+    $form_display_id = $entity->getEntityType() . '.' . $entity->getBundle() . '.' . 'default';
     $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
 
-    $child_form = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
+    $child_form = \Drupal::entityManager()->getFormController($entity->getEntityType(), 'default');
     $child_form->setEntity($entity);
     $entity_form = $child_form->buildForm($entity_form, $child_form_state);
     return $entity_form;
@@ -286,12 +288,12 @@ class EntityInlineEntityFormController {
    */
   public function entityFormSubmit(&$entity_form, &$form_state) {
     $entity = $entity_form['#entity'];
-//    $controller = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
+//    $controller = \Drupal::entityManager()->getFormController($entity->getEntityType(), 'default');
 //    $controller->setEntity($entity);
 //
 //    $child_form = $entity_form;
 //    $child_form_state = $form_state;
-//    $form_display_id = $entity->entityType() . '.' . $entity->bundle() . '.' . 'default';
+//    $form_display_id = $entity->getEntityType() . '.' . $entity->getBundle() . '.' . 'default';
 //    $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
 //    $entity_form['#entity'] = $controller->submit($entity_form, $child_form_state);
 //    return
@@ -307,7 +309,7 @@ class EntityInlineEntityFormController {
     $child_form['#entity'] = $entity;
 
     $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->entityType(), $operation);
+    $controller = \Drupal::entityManager()->getFormController($entity->getEntityType(), $operation);
     $controller->setEntity($entity);
     $child_form_state['build_info']['callback_object'] = $controller;
     $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
@@ -317,7 +319,7 @@ class EntityInlineEntityFormController {
     $child_form_state['values']['menu'] = array();
     $child_form_state['buttons'] = array();
 
-    $this->formController = \Drupal::entityManager()->getFormController($entity->entityType(), 'default');
+    $this->formController = \Drupal::entityManager()->getFormController($entity->getEntityType(), 'default');
     $this->formController->setEntity($entity);
     $child_form = $this->formController->buildForm($child_form, $child_form_state);
 
@@ -358,7 +360,7 @@ class EntityInlineEntityFormController {
    *   The form state of the parent form.
    */
   protected function cleanupFieldFormState($entity_form, &$form_state) {
-    $bundle = $entity_form['#entity']->bundle();
+    $bundle = $entity_form['#entity']->getBundle();
     /**
      * @var \Drupal\Field\Entity\FieldInstance[] $instances
      */
