@@ -8,6 +8,7 @@
 namespace Drupal\inline_entity_form\Plugin\Field\FieldWidget;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Component\Utility\SortArray;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
@@ -110,13 +111,23 @@ class InlineEntityFormMultiple extends WidgetBase {
     $element['#attached']['js'][] = drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js';
 
     // Initialize the IEF array in form state.
-    if (empty($form_state['inline_entity_form'][$this->getIefId()])) {
-      $form_state['inline_entity_form'][$this->getIefId()] = array(
-        'form' => NULL,
-        'settings' => $settings,
-        'instance' => $this->fieldDefinition,
-      );
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['settings'])) {
+      $form_state['inline_entity_form'][$this->getIefId()]['settings'] = $settings;
+    }
 
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['instance'])) {
+      $form_state['inline_entity_form'][$this->getIefId()]['instance'] = $this->fieldDefinition;
+    }
+
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['form'])) {
+      $form_state['inline_entity_form'][$this->getIefId()]['form'] = NULL;
+    }
+
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['array_parents'])) {
+      $form_state['inline_entity_form'][$this->getIefId()]['array_parents'] = $parents;
+    }
+
+    if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
       // Load the entities from the $items array and store them in the form
       // state for further manipulation.
       $form_state['inline_entity_form'][$this->getIefId()]['entities'] = array();
@@ -139,7 +150,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $element['#element_validate'] = array('inline_entity_form_update_row_weights');
     // Add the required element marker & validation.
     if ($element['#required']) {
-      $element['#title'] .= ' ' . theme('form_required_marker', array('element' => $element));
+      $element['#title'] .= ' ' . _theme('form_required_marker', array('element' => $element));
       $element['#element_validate'][] = 'inline_entity_form_required_field';
     }
 
@@ -167,7 +178,8 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
 
       // Data used by theme_inline_entity_form_entity_table().
-      $element['entities'][$key]['#entity'] = $entity = $value['entity'];
+      $entity = $value['entity'];
+      $element['entities'][$key]['#entity'] = $value['entity'];
       $element['entities'][$key]['#item'] = $items->offsetGet($key);
       $element['entities'][$key]['#needs_save'] = $value['needs_save'];
 
@@ -288,7 +300,7 @@ class InlineEntityFormMultiple extends WidgetBase {
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
-        if ($element['#entity_type'] != $settings['entity_type'] || $element['#bundle'] != $bundle) {
+        if ($element['#entity_type'] != $settings['target_type'] || $element['#bundle'] != $bundle) {
           $form_state['inline_entity_form'][$this->getIefId()]['form'] = 'add';
           $form_state['inline_entity_form'][$this->getIefId()]['form settings'] = array(
             'bundle' => $bundle,
@@ -405,7 +417,12 @@ class InlineEntityFormMultiple extends WidgetBase {
    */
   public function extractFormValues(FieldItemListInterface $items, array $form, array &$form_state) {
     $field_name = $this->fieldDefinition->getName();
-    $parents = array($field_name);
+    if (isset($form['#ief_parents'])) {
+      $parents = array_merge($form['#ief_parents'], array($this->fieldDefinition->getName()));
+    }
+    else {
+      $parents = array($field_name);
+    }
     $ief_id = sha1(implode('-', $parents));
     $this->setIefId($ief_id);
 
