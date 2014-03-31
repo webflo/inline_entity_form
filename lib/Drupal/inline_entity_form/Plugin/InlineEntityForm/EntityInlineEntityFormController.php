@@ -249,17 +249,43 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $this->buildChildFormState($entity_form, $form_state, $entity, $operation);
-    $child_form_state = $this->child_form_state;
+    $child_form_state = array();
+    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $controller->setEntity($entity);
 
-    $child_form = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
-    $child_form->setEntity($entity);
-    $entity_form = $child_form->buildForm($entity_form, $child_form_state);
+    $child_form_state['build_info']['callback_object'] = $controller;
+    $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
+    $child_form_state['build_info']['form_id'] = $controller->getFormID();
+    $child_form_state['build_info']['args'] = array();
+    $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
+
+    // Since some of the submit handlers are run, redirects need to be disabled.
+    $child_form_state['no_redirect'] = TRUE;
+
+    // When a form is rebuilt after Ajax processing, its #build_id and #action
+    // should not change.
+    // @see drupal_rebuild_form()
+    $child_form_state['rebuild_info']['copy']['#build_id'] = TRUE;
+    $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
+
+    // Copy values to child form.
+    $child_form_state['input'] = $form_state['input'];
+    $child_form_state['values'] = $form_state['values'];
+
+    $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
+    $child_form_state['langcode'] = $entity->langcode->value;
+
+    $child_form_state['field'] = $form_state['field'];
+    $child_form_state['triggering_element'] = $form_state['triggering_element'];
+    $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
+
+    $entity_form = $controller->buildForm($entity_form, $child_form_state);
 
     foreach ($child_form_state['inline_entity_form'] as $id => $data) {
       $form_state['inline_entity_form'][$id] = $data;
     }
 
+    $form_state['field'] = $child_form_state['field'];
     return $entity_form;
   }
 
@@ -294,18 +320,44 @@ class EntityInlineEntityFormController {
    */
   public function entityFormSubmit(&$entity_form, &$form_state) {
     /**
-     * @var EntityInterface
+     * @var \Drupal\Core\Entity\EntityInterface $entity
      */
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $child_form['#entity'] = $entity;
-    $child_form['#ief_parents'] = $entity_form['#parents'];
-    // $child_form['#parents'] = array();
+    $child_form = $entity_form;
 
-    $this->buildChildFormState($entity_form, $form_state, $entity, $operation);
-    $child_form_state = $this->child_form_state;
-    $controller = $this->child_form_controller;
+    $child_form_state = array();
+    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $controller->setEntity($entity);
+
+    $child_form_state['build_info']['callback_object'] = $controller;
+    $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
+    $child_form_state['build_info']['form_id'] = $controller->getFormID();
+    $child_form_state['build_info']['args'] = array();
+    $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
+
+    // Since some of the submit handlers are run, redirects need to be disabled.
+    $child_form_state['no_redirect'] = TRUE;
+
+    // When a form is rebuilt after Ajax processing, its #build_id and #action
+    // should not change.
+    // @see drupal_rebuild_form()
+    $child_form_state['rebuild_info']['copy']['#build_id'] = TRUE;
+    $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
+
+    // Copy values to child form.
+    $child_form_state['input'] = $form_state['input'];
+    $child_form_state['values'] = $form_state['values'];
+
+    $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
+    $child_form_state['langcode'] = $entity->langcode->value;
+
+    $child_form_state['field'] = $form_state['field'];
+    $child_form_state['triggering_element'] = $form_state['triggering_element'];
+    $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
+
+    $child_form['#ief_parents'] = $entity_form['#parents'];
 
     $entity_form['#entity'] = $controller->submit($child_form, $child_form_state);
 
