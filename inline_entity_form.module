@@ -998,11 +998,13 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
   $instances = field_info_instances($entity_form['#entity_type'], $bundle);
   foreach ($instances as $instance) {
     $field_name = $instance->getName();
-    $parents = $entity_form[$field_name]['#parents'];
-    array_pop($parents);
-    if (is_array($parents)) {
-      $field_state = array();
-      field_form_set_state($parents, $field_name, $form_state, $field_state);
+    if (!empty($entity_form[$field_name]['#parents'])) {
+      $parents = $entity_form[$field_name]['#parents'];
+      array_pop($parents);
+      if (is_array($parents)) {
+        $field_state = array();
+        field_form_set_state($parents, $field_name, $form_state, $field_state);
+      }
     }
   }
 }
