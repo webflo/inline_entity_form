@@ -452,6 +452,9 @@ class InlineEntityFormMultiple extends WidgetBase {
       // @todo: remove the duplicate entity save.
       foreach ($values as $delta => &$item) {
         if (!empty($item['needs_save'])) {
+          if (!$item['entity']->id()) {
+            unset($item['entity']->uuid);
+          }
           $item['entity']->save();
         }
         if (!empty($item['delete'])) {
