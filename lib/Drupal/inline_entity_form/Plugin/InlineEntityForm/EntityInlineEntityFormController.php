@@ -43,7 +43,7 @@ class EntityInlineEntityFormController {
    * Returns an array of entity type labels (singular, plural) fit to be
    * included in the UI text.
    */
-  public function labels() {
+  public function defaultLabels() {
     $labels = array(
       'singular' => t('entity'),
       'plural' => t('entities'),
@@ -56,6 +56,20 @@ class EntityInlineEntityFormController {
     // for more precise and user-friendly strings.
     if (!empty($info['permission labels'])) {
       $labels = $info['permission labels'];
+    }
+
+    return $labels;
+  }
+
+  public function labels() {
+    $labels = $this->defaultLabels();
+
+    // The admin has specified the exact labels that should be used.
+    if ($this->settings['override_labels']) {
+      $labels = array(
+        'singular' => $this->settings['label_singular'],
+        'plural' => $this->settings['label_plural'],
+      );
     }
 
     return $labels;
@@ -138,85 +152,11 @@ class EntityInlineEntityFormController {
     $defaults['allow_existing'] = FALSE;
     $defaults['match_operator'] = 'CONTAINS';
     $defaults['delete_references'] = FALSE;
+    $defaults['override_labels'] = FALSE;
+    $defaults['label_singular'] = '';
+    $defaults['label_plural'] = '';
 
     return $defaults;
-  }
-
-  /**
-   * Returns the settings form for the current entity type.
-   *
-   * The settings form is embedded into the IEF widget settings form.
-   * Settings are later injected into the controller through $this->settings.
-   *
-   * @param $field
-   *   The definition of the reference field used by IEF.
-   * @param $instance
-   *   The definition of the reference field instance.
-   */
-  public function settingsForm($field, $instance) {
-    $labels = $this->labels();
-    $states_prefix = 'instance[widget][settings][type_settings]';
-
-    $form = array();
-    $form['allow_existing'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Allow users to add existing @label.', array('@label' => $labels['plural'])),
-      '#default_value' => $this->settings['allow_existing'],
-    );
-    $form['match_operator'] = array(
-      '#type' => 'select',
-      '#title' => t('Autocomplete matching'),
-      '#default_value' => $this->settings['match_operator'],
-      '#options' => array(
-        'STARTS_WITH' => t('Starts with'),
-        'CONTAINS' => t('Contains'),
-      ),
-      '#description' => t('Select the method used to collect autocomplete suggestions. Note that <em>Contains</em> can cause performance issues on sites with thousands of nodes.'),
-      '#states' => array(
-        'visible' => array(
-          ':input[name="' . $states_prefix . '[allow_existing]"]' => array('checked' => TRUE),
-        ),
-      ),
-    );
-    // The single widget doesn't offer autocomplete functionality.
-    if ($instance['widget']['type'] == 'inline_entity_form_single') {
-      $form['allow_existing']['#access'] = FALSE;
-      $form['match_operator']['#access'] = FALSE;
-    }
-
-    $form['delete_references'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Delete referenced @label when the parent entity is deleted.', array('@label' => $labels['plural'])),
-      '#default_value' => $this->settings['delete_references'],
-    );
-
-    $form['override_labels'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Override labels'),
-      '#default_value' => $this->settings['override_labels'],
-    );
-    $form['label_singular'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Singular label'),
-      '#default_value' => $this->settings['label_singular'],
-      '#states' => array(
-        'visible' => array(
-          ':input[name="' . $states_prefix . '[override_labels]"]' => array('checked' => TRUE),
-        ),
-      ),
-    );
-    $form['label_plural'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Plural label'),
-      '#default_value' => $this->settings['label_plural'],
-      '#states' => array(
-        'visible' => array(
-          ':input[name="' . $states_prefix . '[override_labels]"]' => array('checked' => TRUE),
-        ),
-      ),
-    );
-
-    return $form;
   }
 
   /**
