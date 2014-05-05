@@ -21,7 +21,7 @@ use Drupal\Core\Field\WidgetBase;
  *   },
  *   settings = {
  *     "allow_existing" = FALSE,
- *     "match_operator" = 'CONTAINS',
+ *     "match_operator" = "CONTAINS",
  *     "delete_references" = FALSE,
  *     "override_labels" = FALSE,
  *     "label_singular" = "",
