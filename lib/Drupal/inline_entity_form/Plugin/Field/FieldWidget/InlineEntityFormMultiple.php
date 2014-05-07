@@ -213,7 +213,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       $form_state['inline_entity_form'][$this->getIefId()]['array_parents'] = $parents;
     }
 
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
+    if (!isset($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
       // Load the entities from the $items array and store them in the form
       // state for further manipulation.
       $form_state['inline_entity_form'][$this->getIefId()]['entities'] = array();
