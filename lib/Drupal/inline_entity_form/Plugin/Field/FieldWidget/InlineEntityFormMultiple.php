@@ -582,22 +582,13 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
     }
 
+    // Sort items by _weight.
+    usort($items, function ($a, $b) {
+      return SortArray::sortByKeyInt($a, $b, '_weight');
+    });
+
     return $items;
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function settingsSummary() {
-    $summary = array();
-
-    $summary[] = t('Example summary');
-    /*$placeholder = $this->getSetting('placeholder');
-    if (!empty($placeholder)) {
-      $summary[] = t('Placeholder: @placeholder', array('@placeholder' => $placeholder));
-    } */
-
-    return $summary;
-  }
 }
 
