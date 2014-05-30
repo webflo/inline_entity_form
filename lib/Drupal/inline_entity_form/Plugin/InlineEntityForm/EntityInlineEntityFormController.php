@@ -240,10 +240,7 @@ class EntityInlineEntityFormController {
   public function entityFormValidate($entity_form, &$form_state) {
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $entity = $entity_form['#entity'];
-
-    if ($info->isFieldable()) {
-      field_attach_form_validate($entity, $entity_form, $form_state);
-    }
+    $form_state['form_display']->validateFormValues($entity, $entity_form, $form_state);
   }
 
   /**
@@ -275,7 +272,7 @@ class EntityInlineEntityFormController {
     $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
     $child_form_state['build_info']['form_id'] = $controller->getFormID();
     $child_form_state['build_info']['args'] = array();
-    $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
+    $child_form_state['form_display'] = entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), $operation);
 
     // Since some of the submit handlers are run, redirects need to be disabled.
     $child_form_state['no_redirect'] = TRUE;
