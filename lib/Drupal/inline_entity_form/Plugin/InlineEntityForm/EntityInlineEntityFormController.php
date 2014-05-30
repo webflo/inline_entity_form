@@ -238,9 +238,11 @@ class EntityInlineEntityFormController {
    *   The form state of the parent form.
    */
   public function entityFormValidate($entity_form, &$form_state) {
+    /*
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $entity = $entity_form['#entity'];
     $form_state['form_display']->validateFormValues($entity, $entity_form, $form_state);
+    */
   }
 
   /**
