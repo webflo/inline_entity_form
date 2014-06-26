@@ -23,14 +23,6 @@ use Drupal\field\Entity\FieldInstance;
  *   field_types = {
  *     "entity_reference"
  *   },
- *   settings = {
- *     "allow_existing" = FALSE,
- *     "match_operator" = "CONTAINS",
- *     "delete_references" = FALSE,
- *     "override_labels" = FALSE,
- *     "label_singular" = "",
- *     "label_plural" = ""
- *   },
  *   multiple_values = true
  * )
  */
@@ -51,6 +43,20 @@ class InlineEntityFormMultiple extends WidgetBase {
   protected $iefController;
 
   protected $iefId;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function defaultSettings() {
+    return array(
+      "allow_existing" => FALSE,
+      "match_operator" => "CONTAINS",
+      "delete_references" => FALSE,
+      "override_labels" => FALSE,
+      "label_singular" => "",
+      "label_plural" => "",
+    );
+  }
 
   /**
    * Returns the settings form for the current entity type.
