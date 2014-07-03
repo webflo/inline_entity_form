@@ -407,8 +407,8 @@ class EntityInlineEntityFormController {
    *   - parent_entity_type: The type of the parent entity.
    *   - parent_entity: The parent entity.
    */
-  public function save($entity, $context) {
-    $entity->save();
+  public function save(EntityInterface $entity, $context) {
+    return $entity->save();
   }
 
   /**

@@ -508,6 +508,7 @@ class InlineEntityFormMultiple extends WidgetBase {
    * {@inheritdoc}
    */
   public function extractFormValues(FieldItemListInterface $items, array $form, array &$form_state) {
+    $this->initializeIefController();
     $field_name = $this->fieldDefinition->getName();
     if (isset($form['#ief_parents'])) {
       $parents = array_merge($form['#ief_parents'], array($this->fieldDefinition->getName()));
@@ -547,7 +548,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           if (!$item['entity']->id()) {
             unset($item['entity']->uuid);
           }
-          $item['entity']->save();
+          $this->iefController->save($item['entity'], array());
         }
         if (!empty($item['delete'])) {
           $item['entity']->delete();
