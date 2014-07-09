@@ -264,6 +264,10 @@ class InlineEntityFormMultiple extends WidgetBase {
     drupal_alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
 
+    $items_count = count($form_state['inline_entity_form'][$this->getIefId()]['entities']);
+    if ($items_count < 10) {
+      $items_count = 10;
+    }
     foreach ($form_state['inline_entity_form'][$this->getIefId()]['entities'] as $key => $value) {
       if (!isset($value['entity'])) {
         continue;
@@ -314,11 +318,11 @@ class InlineEntityFormMultiple extends WidgetBase {
         }
       }
       else {
-        $row = & $element['entities'][$key];
+        $row = &$element['entities'][$key];
         $row['title'] = array();
         $row['delta'] = array(
           '#type' => 'weight',
-          '#delta' => 50,
+          '#delta' => $items_count,
           '#default_value' => $value['_weight'],
           '#attributes' => array('class' => array('ief-entity-delta')),
         );
