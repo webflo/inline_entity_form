@@ -8,6 +8,7 @@
  * managed outside the parent form.
  */
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Field\FieldDefinitionInterface;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -92,8 +93,8 @@ function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $st
  * @return
  *   An instantiated controller object, or FALSE if none found.
  */
-function inline_entity_form_get_controller($instance) {
-  $field = $instance->getField();
+function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
+  $field = $instance->getFieldStorageDefinition();
   $instance_settings = $instance->getSettings();
   $field_settings = $field->getSettings();
 
