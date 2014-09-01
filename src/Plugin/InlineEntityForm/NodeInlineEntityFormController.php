@@ -15,7 +15,7 @@ use Drupal\Core\Form\FormState;
  * Node.
  *
  * @Plugin(
- *   id = "node"
+ *   id = "entity:node"
  * )
  */
 class NodeInlineEntityFormController extends EntityInlineEntityFormController {

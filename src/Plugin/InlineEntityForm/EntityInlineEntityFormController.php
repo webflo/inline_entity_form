@@ -10,14 +10,26 @@ namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 use Drupal\Component\Utility\NestedArray;
 use Drupal;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Field\WidgetBase;
+use Drupal\Core\Form\FormState;
 
+/**
+ * Generic entity inline form.
+ *
+ * @Plugin(
+ *   id = "entity",
+ *   deriver = "Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm",
+ * )
+ *
+ * @see \Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm
+ */
 class EntityInlineEntityFormController {
 
   protected $entityType;
   public $settings;
 
   public function __construct($configuration, $plugin_id, $plugin_definition) {
-    $this->entityType = $plugin_id;
+    list(, $this->entityType) = explode(':', $plugin_id, 2);
     $this->settings = $configuration + $this->defaultSettings();
   }
 
@@ -189,7 +201,7 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $child_form_state = array();
+    $child_form_state = new Drupal\Core\Form\FormState();
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
@@ -266,7 +278,9 @@ class EntityInlineEntityFormController {
 
     $child_form = $entity_form;
 
-    $child_form_state = array();
+    $child_form_state = new FormState();
+    $child_form_state->set('values', NestedArray::getValue($form_state['values'], $entity_form['#parents']));
+
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
@@ -286,8 +300,8 @@ class EntityInlineEntityFormController {
     $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
 
     // Copy values to child form.
-    $child_form_state['input'] = $form_state['input'];
-    $child_form_state['values'] = $form_state['values'];
+//    $child_form_state['input'] = $form_state['input'];
+//    $child_form_state['values'] = $form_state['values'];
 
     $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
     $child_form_state['langcode'] = $entity->langcode->value;
@@ -329,11 +343,11 @@ class EntityInlineEntityFormController {
       if (isset($entity_form[$field_name])) {
         $parents = $entity_form[$field_name]['#parents'];
 
-        $field_state = field_form_get_state($parents, $field_name, $form_state);
+        $field_state = WidgetBase::getWidgetState($parents, $field_name, $form_state);
         unset($field_state['items']);
         unset($field_state['entity']);
         $field_state['items_count'] = 0;
-        field_form_set_state($parents, $field_name, $form_state, $field_state);
+        WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
       }
     }
   }

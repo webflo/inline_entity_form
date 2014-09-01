@@ -39,7 +39,7 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
   $form_display = entity_get_form_display($instance->entity_type, $instance->bundle, 'default');
   $widget_settings = $form_display->getComponent($field->name)['settings'];
 
-  return \Drupal::service("plugin.manager.inline_entity_form")->createInstance($field_settings['target_type'], $widget_settings);
+  return \Drupal::service("plugin.manager.inline_entity_form")->createInstance('entity:' . $field_settings['target_type'], $widget_settings);
 
   /*
   $field = field_info_field($instance['field_name']);
