@@ -525,9 +525,15 @@ class InlineEntityFormMultiple extends WidgetBase {
     $ief_id = sha1(implode('-', $parents));
     $this->setIefId($ief_id);
 
-    $key_exists = NULL;
-    $path = array_merge(array('inline_entity_form'), array($this->getIefId()));
-    $values = NestedArray::getValue($form_state, $path, $key_exists);
+    $inline_entity_form_state = $form_state->get('inline_entity_form');
+    if (isset($inline_entity_form_state[$this->getIefId()])) {
+      $values = $inline_entity_form_state[$this->getIefId()];
+      $key_exists = TRUE;
+    }
+    else {
+      $values = [];
+      $key_exists = FALSE;
+    }
 
     if ($key_exists) {
       $values = $values['entities'];

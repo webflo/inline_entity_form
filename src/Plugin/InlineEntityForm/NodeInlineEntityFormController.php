@@ -63,13 +63,14 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
     $entity_form += entity_get_form($entity, 'default', $form_state);
     */
 
-    $this->formController = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), 'default');
+    $this->formController = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), 'default');
     $this->formController->setEntity($entity);
 
 //    $form_display_id = $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . 'default';
 //    $form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
 
-    $child_form_state['values'] = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
+    $child_form_state = new FormState();
+    $child_form_state->set('values',NestedArray::getValue($form_state['values'], $entity_form['#parents']));
 
 //    $child_form_state['form_display'] = entity_load('entity_form_display', $form_display_id);
 
@@ -127,8 +128,8 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
 
     $child_form['#entity'] = $entity;
 
-    $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $child_form_state = new FormState();
+    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
     $child_form_state['build_info']['callback_object'] = $controller;
     $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
