@@ -34,6 +34,20 @@ use Drupal\Core\Form\FormStateInterface;
 class InlineEntityFormSingle extends WidgetBase {
 
   /**
+   * {@inheritdoc}
+   */
+  public static function defaultSettings() {
+    return array(
+      "allow_existing" => FALSE,
+      "match_operator" => "CONTAINS",
+      "delete_references" => FALSE,
+      "override_labels" => FALSE,
+      "label_singular" => "",
+      "label_plural" => "",
+    );
+  }
+
+  /**
    * Returns the settings form for the current entity type.
    *
    * The settings form is embedded into the IEF widget settings form.
