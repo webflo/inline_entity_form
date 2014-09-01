@@ -12,6 +12,7 @@ use Drupal\Component\Utility\SortArray;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\field\Entity\FieldInstance;
 
 /**
@@ -69,7 +70,7 @@ class InlineEntityFormMultiple extends WidgetBase {
    * @param $instance
    *   The definition of the reference field instance.
    */
-  public function settingsForm(array $form, array &$form_state) {
+  public function settingsForm(array $form, FormStateInterface $form_state) {
     $ief_controller = inline_entity_form_get_controller($this->fieldDefinition);
 
     $labels = $ief_controller->labels();
@@ -159,7 +160,7 @@ class InlineEntityFormMultiple extends WidgetBase {
   /**
    * {@inheritdoc}
    */
-  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, array &$form_state) {
+  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
     $this->entityManager = \Drupal::entityManager();
     $settings = $this->getFieldSettings();
 
@@ -511,7 +512,7 @@ class InlineEntityFormMultiple extends WidgetBase {
   /**
    * {@inheritdoc}
    */
-  public function extractFormValues(FieldItemListInterface $items, array $form, array &$form_state) {
+  public function extractFormValues(FieldItemListInterface $items, array $form, FormStateInterface $form_state) {
     $this->initializeIefController();
     $field_name = $this->fieldDefinition->getName();
     if (isset($form['#ief_parents'])) {
@@ -581,7 +582,7 @@ class InlineEntityFormMultiple extends WidgetBase {
   /**
    * {@inheritdoc}
    */
-  public function massageFormValues(array $values, array $form, array &$form_state) {
+  public function massageFormValues(array $values, array $form, FormStateInterface $form_state) {
     $items = array();
 
     // Convert form values to actual entity reference values.
