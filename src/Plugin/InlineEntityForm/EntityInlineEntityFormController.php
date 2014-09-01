@@ -190,7 +190,7 @@ class EntityInlineEntityFormController {
     $operation = 'default';
 
     $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state['build_info']['callback_object'] = $controller;
