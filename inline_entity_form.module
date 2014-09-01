@@ -1001,7 +1001,7 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
   }
 
   $bundle = $entity_form['#entity']->bundle();
-  $instances = field_info_instances($entity_form['#entity_type'], $bundle);
+  $instances = \Drupal::entityManager()->getFieldDefinitions($entity_form['#entity_type'], $bundle);
   foreach ($instances as $instance) {
     $field_name = $instance->getName();
     if (!empty($entity_form[$field_name]['#parents'])) {

@@ -139,7 +139,7 @@ class NodeInlineEntityFormController extends EntityInlineEntityFormController {
     $child_form_state['values']['menu'] = array();
     $child_form_state['buttons'] = array();
 
-    $this->formController = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), 'default');
+    $this->formController = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), 'default');
     $this->formController->setEntity($entity);
     $child_form = $this->formController->buildForm($child_form, $child_form_state);
 

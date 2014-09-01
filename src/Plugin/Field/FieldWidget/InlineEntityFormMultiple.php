@@ -166,7 +166,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $settings = $this->getFieldSettings();
 
     $entity_info = $this->entityManager->getDefinition($settings['target_type']);
-    $cardinality = $this->fieldDefinition->getCardinality();
+    $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $this->initializeIefController();
 
     if (!$this->iefController) {
@@ -178,7 +178,7 @@ class InlineEntityFormMultiple extends WidgetBase {
 
     // Build a parents array for this element's values in the form.
     $parents = array_merge($element['#field_parents'], array(
-      $element['#field_name']
+      $items->getName(),
     ));
 
     // Assign a unique identifier to each IEF widget.
@@ -187,7 +187,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $this->setIefId(sha1(implode('-', $parents)));
 
     // Get the langcode of the parent entity.
-    $parent_langcode = $element['#entity']->language()->id;
+    $parent_langcode = $items->getParent()->language()->id;
 
     // Determine the wrapper ID for the entire element.
     $wrapper = 'inline-entity-form-' . $this->getIefId();
@@ -557,9 +557,11 @@ class InlineEntityFormMultiple extends WidgetBase {
       // @todo: remove the duplicate entity save.
       foreach ($values as $delta => &$item) {
         if (!empty($item['needs_save'])) {
-          if (!$item['entity']->id()) {
-            unset($item['entity']->uuid);
-          }
+          // @todo That unset is no longer needed. Figure out whether removing
+          //   it, is the correct fix.
+          // if (!$item['entity']->id()) {
+          // unset($item['entity']->uuid);
+          // }
           $this->iefController->save($item['entity'], array());
         }
         if (!empty($item['delete'])) {

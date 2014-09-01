@@ -267,7 +267,7 @@ class EntityInlineEntityFormController {
     $child_form = $entity_form;
 
     $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state['build_info']['callback_object'] = $controller;
@@ -434,7 +434,7 @@ class EntityInlineEntityFormController {
    */
   protected function buildChildFormState(&$entity_form, &$form_state, $entity, $operation) {
     $child_form_state = array();
-    $controller = \Drupal::entityManager()->getFormController($entity->getEntityTypeId(), $operation);
+    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state['build_info']['callback_object'] = $controller;
