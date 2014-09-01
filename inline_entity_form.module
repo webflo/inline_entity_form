@@ -9,6 +9,7 @@
  */
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Plugin\Field\FieldWidget\FileWidget;
 
 /**
@@ -20,70 +21,6 @@ define('IEF_ENTITY_UNLINK', 1);
  * Flag indicating that the entity should be unlinked and deleted.
  */
 define('IEF_ENTITY_UNLINK_DELETE', 2);
-
-/**
- * Implements hook_menu().
- */
-function inline_entity_form_menu() {
-  $items = array();
-  $items['inline_entity_form/autocomplete'] = array(
-    'title' => 'Inline Entity Form Autocomplete',
-    'page callback' => 'inline_entity_form_autocomplete',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  return $items;
-}
-
-/**
- * Returns output for inline entity form autocompletes.
- *
- * Supports commerce_product_reference and entityreference fields.
- */
-function inline_entity_form_autocomplete($entity_type, $field_name, $bundle, $string = '') {
-  $field = field_info_field($field_name);
-  $instance = field_info_instance($entity_type, $field_name, $bundle);
-  $settings = inline_entity_form_settings($field, $instance);
-  $controller = inline_entity_form_get_controller($instance);
-  // The current entity type is not supported, or the string is empty.
-  // strlen() is used instead of empty() since '0' is a valid value.
-  if (!$field || !$instance || !$controller || !strlen($string)) {
-    return MENU_ACCESS_DENIED;
-  }
-
-  $results = array();
-  if ($field['type'] == 'commerce_product_reference') {
-    $match_operator = strtolower($controller->getSetting('match_operator'));
-    $products = commerce_product_match_products($field, $instance, $string, $match_operator, array(), 10, TRUE);
-
-    // Loop through the products and convert them into autocomplete output.
-    foreach ($products as $product_id => $data) {
-      $results[] = t('@label (!entity_id)', array('@label' => $data['title'], '!entity_id' => $product_id));
-    }
-  }
-  elseif ($field['type'] == 'entityreference') {
-    $handler = entityreference_get_selection_handler($field, $instance, $settings['entity_type']);
-    $entity_labels = $handler->getReferencableEntities($string, $controller->getSetting('match_operator'), 10);
-
-    foreach ($entity_labels as $bundle => $labels) {
-      // Loop through each entity type, and autocomplete with its titles.
-      foreach ($labels as $entity_id => $label) {
-        // entityreference has already check_plain-ed the title.
-        $results[] = t('!label (!entity_id)', array('!label' => $label, '!entity_id' => $entity_id));
-      }
-    }
-  }
-
-  $matches = array();
-  foreach ($results as $result) {
-    // Strip things like starting/trailing white spaces, line breaks and tags.
-    $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(decode_entities(strip_tags($result)))));
-    $matches[$key] = '<div class="reference-autocomplete">' . $result . '</div>';
-  }
-
-  drupal_json_output($matches);
-}
 
 /**
  * Returns the Inline Entity Form controller for the passed-in reference field.
@@ -543,15 +480,15 @@ function inline_entity_form_entity_form_submit($entity_form, &$form_state) {
 function inline_entity_form_reference_form($controller, $reference_form, &$form_state) {
   $labels = $controller->labels();
   $ief_id = $reference_form['#ief_id'];
+  /** @var \Drupal\field\Entity\FieldInstanceConfig $instance */
   $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
-  $autocomplete_path = 'inline_entity_form/autocomplete/' . $instance['entity_type'];
-  $autocomplete_path .= '/' . $instance['field_name'] . '/' . $instance['bundle'];
 
   $reference_form['#title'] = t('Add existing @type_singular', array('@type_singular' => $labels['singular']));
   $reference_form['entity_id'] = array(
     '#type' => 'textfield',
     '#title' => t('@label', array('@label' => ucwords($labels['singular']))),
-    '#autocomplete_path' => $autocomplete_path,
+    '#autocomplete_route_name' => 'inline_entity_form.autocomplete',
+    '#autocomplete_route_parameters' => ['entity_type_id' => $instance->entity_type, 'field_name' => $instance->field_name, 'bundle' => $instance->bundle],
     '#element_validate' => array('_inline_entity_form_autocomplete_validate'),
     '#required' => TRUE,
     '#maxlength' => 255,
@@ -620,7 +557,7 @@ function _inline_entity_form_autocomplete_validate($element, &$form_state, $form
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_reference_form_validate(&$reference_form, &$form_state) {
+function inline_entity_form_reference_form_validate(&$reference_form, FormStateInterface $form_state) {
   $ief_id = $reference_form['#ief_id'];
   $entity_type = $reference_form['#entity_type'];
   $parents_path = implode('][', $reference_form['#parents']);
@@ -637,13 +574,13 @@ function inline_entity_form_reference_form_validate(&$reference_form, &$form_sta
   if (!empty($attach_entity)) {
     foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as $key => $value) {
       if ($value['entity'] == $attach_entity) {
-        form_set_error($parents_path . '][existing_entity', t('The selected @label has already been added.', array('@label' => $labels['singular'])));
+        $form_state->setErrorByName($parents_path . '][existing_entity', t('The selected @label has already been added.', array('@label' => $labels['singular'])));
         unset($attach_entity);
       }
     }
   }
   else {
-    form_set_error($parents_path . '][existing_entity', t('The selected @label is not valid.', array('@label' => $labels['singular'])));
+    $form_state->setErrorByName($parents_path . '][existing_entity', t('The selected @label is not valid.', array('@label' => $labels['singular'])));
   }
 }
 
