@@ -262,7 +262,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       'entity_type' => $settings['target_type'],
       'allowed_bundles' => $settings['handler_settings']['target_bundles'],
     );
-    drupal_alter('inline_entity_form_table_fields', $fields, $context);
+    \Drupal::moduleHandler()->alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
 
     $items_count = count($form_state['inline_entity_form'][$this->getIefId()]['entities']);

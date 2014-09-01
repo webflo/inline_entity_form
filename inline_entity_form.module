@@ -455,7 +455,7 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
   $entity_form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
 
   // Allow other modules to alter the form.
-  drupal_alter('inline_entity_form_entity_form', $entity_form, $form_state);
+  \Drupal::moduleHandler()->alter('inline_entity_form_entity_form', $entity_form, $form_state);
 
   return $entity_form;
 }
@@ -591,7 +591,7 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
   $reference_form['#ief_element_submit'][] = 'inline_entity_form_reference_form_submit';
 
   // Allow other modules to alter the form.
-  drupal_alter('inline_entity_form_reference_form', $reference_form, $form_state);
+  \Drupal::moduleHandler()->alter('inline_entity_form_reference_form', $reference_form, $form_state);
 
   return $reference_form;
 }
