@@ -279,7 +279,7 @@ class EntityInlineEntityFormController {
     $child_form = $entity_form;
 
     $child_form_state = new FormState();
-    $child_form_state->set('values', NestedArray::getValue($form_state['values'], $entity_form['#parents']));
+//    $child_form_state->set('values', NestedArray::getValue($form_state['values'], $entity_form['#parents']));
 
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
@@ -300,8 +300,8 @@ class EntityInlineEntityFormController {
     $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
 
     // Copy values to child form.
-//    $child_form_state['input'] = $form_state['input'];
-//    $child_form_state['values'] = $form_state['values'];
+    $child_form_state['input'] = $form_state['input'];
+    $child_form_state['values'] = $form_state['values'];
 
     $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
     $child_form_state['langcode'] = $entity->langcode->value;
