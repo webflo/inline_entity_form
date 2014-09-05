@@ -114,7 +114,7 @@ function inline_entity_form_product_status_options_list() {
  *
  * @todo Remove when there's a stable contrib module for this.
  */
-function inline_entity_form_entity_delete($entity, $type) {
+function inline_entity_form_entity_delete($entity) {
   return;
 
   $entity_info = \Drupal::entityManager()->getDefinition($type);
