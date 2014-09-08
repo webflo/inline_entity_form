@@ -8,6 +8,7 @@
  * managed outside the parent form.
  */
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Plugin\Field\FieldWidget\FileWidget;
@@ -114,7 +115,7 @@ function inline_entity_form_product_status_options_list() {
  *
  * @todo Remove when there's a stable contrib module for this.
  */
-function inline_entity_form_entity_delete($entity, $type) {
+function inline_entity_form_entity_delete(EntityInterface $entity) {
   return;
 
   $entity_info = \Drupal::entityManager()->getDefinition($type);
