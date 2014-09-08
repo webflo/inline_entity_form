@@ -10,8 +10,8 @@
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\file\Plugin\Field\FieldWidget\FileWidget;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -947,7 +947,7 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
       array_pop($parents);
       if (is_array($parents)) {
         $field_state = array();
-        FileWidget::getWidgetState($parents, $field_name, $form_state, $field_state);
+        WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
       }
     }
   }

@@ -14,7 +14,6 @@ use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\field\Entity\FieldInstance;
-use Drupal\file\Plugin\Field\FieldWidget\FileWidget;
 
 /**
  * Multiple value widget.
@@ -579,13 +578,13 @@ class InlineEntityFormMultiple extends WidgetBase {
       $items->filterEmptyItems();
 
       // Put delta mapping in $form_state, so that flagErrors() can use it.
-      $field_state = FileWidget::getWidgetState($form['#parents'], $field_name, $form_state);
+      $field_state = WidgetBase::getWidgetState($form['#parents'], $field_name, $form_state);
       foreach ($items as $delta => $item) {
         $field_state['original_deltas'][$delta] = isset($item->_original_delta) ? $item->_original_delta : $delta;
         unset($item->_original_delta, $item->_weight);
       }
 
-      FileWidget::getWidgetState($form['#parents'], $field_name, $form_state, $field_state);
+      WidgetBase::setWidgetState($form['#parents'], $field_name, $form_state, $field_state);
     }
   }
 
