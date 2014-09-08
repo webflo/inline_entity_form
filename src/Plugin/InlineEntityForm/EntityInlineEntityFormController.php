@@ -12,6 +12,7 @@ use Drupal;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormState;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Generic entity inline form.
@@ -223,6 +224,7 @@ class EntityInlineEntityFormController {
     // Copy values to child form.
     $child_form_state['input'] = $form_state['input'];
     $child_form_state['values'] = $form_state['values'];
+    $child_form_state['storage'] = $form_state['storage'];
 
     $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
     $child_form_state['langcode'] = $entity->langcode->value;
@@ -271,7 +273,7 @@ class EntityInlineEntityFormController {
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -304,6 +306,7 @@ class EntityInlineEntityFormController {
     // Copy values to child form.
     $child_form_state['input'] = $form_state['input'];
     $child_form_state['values'] = $form_state['values'];
+    $child_form_state['storage'] = $form_state['storage'];
 
     $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
     $child_form_state['langcode'] = $entity->langcode->value;
