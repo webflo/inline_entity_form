@@ -179,6 +179,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     // Build a parents array for this element's values in the form.
     $parents = array_merge($element['#field_parents'], array(
       $items->getName(),
+      'form',
     ));
 
     // Assign a unique identifier to each IEF widget.
@@ -476,7 +477,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#ief_id' => $this->getIefId(),
         // Used by Field API and controller methods to find the relevant
         // values in $form_state.
-        '#parents' => array_merge($parents, array('form')),
+        '#parents' => array_merge($parents),
         // Pass the current entity type.
         '#entity_type' => $settings['target_type'],
         // Pass the langcode of the parent entity,
@@ -517,10 +518,10 @@ class InlineEntityFormMultiple extends WidgetBase {
     $this->initializeIefController();
     $field_name = $this->fieldDefinition->getName();
     if (isset($form['#ief_parents'])) {
-      $parents = array_merge($form['#ief_parents'], array($this->fieldDefinition->getName()));
+      $parents = $form['#ief_parents'];
     }
     else {
-      $parents = array($field_name);
+      $parents = array($field_name, 'form');
     }
     $ief_id = sha1(implode('-', $parents));
     $this->setIefId($ief_id);

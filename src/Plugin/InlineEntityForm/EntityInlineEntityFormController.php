@@ -231,6 +231,8 @@ class EntityInlineEntityFormController {
     $child_form_state['triggering_element'] = $form_state['triggering_element'];
     $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
 
+    $entity_form['#ief_parents'] = $entity_form['#parents'];
+
     $entity_form = $controller->buildForm($entity_form, $child_form_state);
 
     foreach ($child_form_state['inline_entity_form'] as $id => $data) {
