@@ -250,8 +250,8 @@ function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
  * Needs to be done in an alter hook because many forms add the submit button
  * after inline_entity_form_field_widget_form() is called.
  */
-function inline_entity_form_form_alter(&$form, &$form_state, $form_id) {
-  if (!empty($form_state['inline_entity_form'])) {
+function inline_entity_form_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (!empty($form_state->get('inline_entity_form'))) {
     $submit = array_merge(array('inline_entity_form_trigger_submit'), $form['#submit']);
 
     if (!empty($form['submit'])) {
@@ -312,7 +312,7 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
   }
   elseif ($entity_form['#op'] == 'add') {
     // Create a new entity that will be passed to the form.
-    $ief_settings = $form_state['inline_entity_form'][$entity_form['#ief_id']];
+    $ief_settings = $form_state->get(['inline_entity_form', $entity_form['#ief_id']]);
     if (isset($ief_settings['form settings']['bundle'])) {
       $bundle = $ief_settings['form settings']['bundle'];
     }
@@ -760,20 +760,21 @@ function inline_entity_form_submit($elements, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_open_form($form, &$form_state) {
+function inline_entity_form_open_form($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
+  $form_state->setRebuild();
 
-  $form_state['rebuild'] = TRUE;
   // Get the current form values.
   $parents = array_merge($element['#field_parents'], array($element['#field_name']));
-  $form_values = NestedArray::getValue($form_state['input'], $parents);
+  $form_values = NestedArray::getValue($form_state->getUserInput(), $parents);
 
-  $form_state['inline_entity_form'][$ief_id]['form'] = $form_state['triggering_element']['#ief_form'];
+  $triggering_element = $form_state->getTriggeringElement();
+  $form_state->set(['inline_entity_form', $ief_id, 'form'], $triggering_element['#ief_form']);
   if (!empty($form_values['actions']['bundle'])) {
-    $form_state['inline_entity_form'][$ief_id]['form settings'] = array(
+    $form_state->set(['inline_entity_form', $ief_id, 'form settings'], array(
       'bundle' => $form_values['actions']['bundle'],
-    );
+    ));
   }
 }
 
@@ -956,11 +957,12 @@ function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state
 /**
  * Returns an IEF widget nearest to the triggering element.
  */
-function inline_entity_form_get_element($form, $form_state) {
+function inline_entity_form_get_element($form, FormStateInterface $form_state) {
   $element = array();
-  $array_parents = $form_state['triggering_element']['#array_parents'];
+  $triggering_element = $form_state->getTriggeringElement();
+
   // Remove the action and the actions container.
-  $array_parents = array_slice($array_parents, 0, -2);
+  $array_parents = array_slice($triggering_element['#array_parents'], 0, -2);
 
   while (!isset($element['#ief_root'])) {
     $element = NestedArray::getValue($form, $array_parents);

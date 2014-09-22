@@ -205,36 +205,37 @@ class InlineEntityFormMultiple extends WidgetBase {
     $element['#attached']['js'][] = drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js';
 
     // Initialize the IEF array in form state.
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['settings'])) {
-      $form_state['inline_entity_form'][$this->getIefId()]['settings'] = $settings;
+    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'settings']))) {
+      $form_state->set(['inline_entity_form', $this->getIefId(), 'settings'], $settings);
     }
 
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['instance'])) {
-      $form_state['inline_entity_form'][$this->getIefId()]['instance'] = $this->fieldDefinition;
+    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'instance']))) {
+      $form_state->set(['inline_entity_form', $this->getIefId(), 'instance'], $this->fieldDefinition);
     }
 
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['form'])) {
-      $form_state['inline_entity_form'][$this->getIefId()]['form'] = NULL;
+    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'form']))) {
+      $form_state->set(['inline_entity_form', $this->getIefId(), 'form'], NULL);
     }
 
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['array_parents'])) {
-      $form_state['inline_entity_form'][$this->getIefId()]['array_parents'] = $parents;
+    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'array_parents']))) {
+      $form_state->set(['inline_entity_form', $this->getIefId(), 'array_parents'], $parents);
     }
 
-    if (!isset($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
+    $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
+    if (!isset($entities)) {
       // Load the entities from the $items array and store them in the form
       // state for further manipulation.
-      $form_state['inline_entity_form'][$this->getIefId()]['entities'] = array();
+      $form_state->set(['inline_entity_form', $this->getIefId(), 'entities'], array());
 
       if (count($items)) {
         foreach ($items as $delta => $item) {
           if ($item->entity && is_object($item->entity)) {
-            $form_state['inline_entity_form'][$this->getIefId()]['entities'][$delta] = array(
+            $form_state->set(['inline_entity_form', $this->getIefId(), 'entities', $delta], array(
               'entity' => $item->entity,
               '_weight' => $delta,
               'form' => NULL,
               'needs_save' => FALSE,
-            );
+            ));
           }
         }
       }
@@ -266,11 +267,11 @@ class InlineEntityFormMultiple extends WidgetBase {
     \Drupal::moduleHandler()->alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
 
-    $items_count = count($form_state['inline_entity_form'][$this->getIefId()]['entities']);
+    $items_count = count($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']));
     if ($items_count < 10) {
       $items_count = 10;
     }
-    foreach ($form_state['inline_entity_form'][$this->getIefId()]['entities'] as $key => $value) {
+    foreach ($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']) as $key => $value) {
       if (!isset($value['entity'])) {
         continue;
       }
@@ -373,7 +374,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
     }
 
-    $entity_count = count($form_state['inline_entity_form'][$this->getIefId()]['entities']);
+    $entity_count = count($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']));
     if ($cardinality > 1) {
       // Add a visual cue of cardinality count.
       $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
@@ -392,7 +393,8 @@ class InlineEntityFormMultiple extends WidgetBase {
 
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
+    $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
+    if (empty($entities)) {
       if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->iefController->getSetting('allow_existing')) {
         $bundle = reset($settings['handler_settings']['target_bundles']);
 
@@ -408,7 +410,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
 
     // If no form is open, show buttons that open one.
-    if (empty($form_state['inline_entity_form'][$this->getIefId()]['form'])) {
+    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'form']))) {
       $element['actions'] = array(
         '#attributes' => array('class' => array('container-inline')),
         '#type' => 'container',
@@ -483,7 +485,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#parent_language' => $parent_langcode,
       );
 
-      if ($form_state['inline_entity_form'][$this->getIefId()]['form'] == 'add') {
+      if ($form_state->get(['inline_entity_form', $this->getIefId(), 'form']) == 'add') {
         $element['form']['#op'] = 'add';
         $element['form'] += inline_entity_form_entity_form($this->iefController, $element['form'], $form_state);
 
