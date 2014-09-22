@@ -402,10 +402,10 @@ class EntityInlineEntityFormController {
    * @return
    *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
    */
-  public function removeFormSubmit($remove_form, &$form_state) {
+  public function removeFormSubmit($remove_form, FormStateInterface $form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
-    $form_values = NestedArray::getValue($form_state['values'], $remove_form['#parents']);
+    $form_values = NestedArray::getValue($form_state->getValues(), $remove_form['#parents']);
     // This entity hasn't been saved yet, we can just unlink it.
     if (empty($entity_id)) {
       return IEF_ENTITY_UNLINK;

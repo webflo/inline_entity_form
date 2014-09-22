@@ -281,12 +281,12 @@ function inline_entity_form_form_alter(&$form, FormStateInterface $form_state, $
 /**
  * Updates entity weights based on their weights in the widget.
  */
-function inline_entity_form_update_row_weights($element, &$form_state, $form) {
+function inline_entity_form_update_row_weights($element, FormStateInterface $form_state, $form) {
   $ief_id = $element['#ief_id'];
   // Loop over the submitted delta values and update the weight of the entities
   // in the form state.
   foreach (element_children($element['entities']) as $key) {
-    $form_state['inline_entity_form'][$ief_id]['entities'][$key]['_weight'] = $element['entities'][$key]['delta']['#value'];
+    $form_state->set(['inline_entity_form', $ief_id, 'entities', $key, '_weight'], $element['entities'][$key]['delta']['#value']);
   }
 }
 
@@ -688,12 +688,12 @@ function inline_entity_form_remove_form($controller, $remove_form, &$form_state)
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_remove_confirm($form, &$form_state) {
-  $form_state['rebuild'] = TRUE;
+function inline_entity_form_remove_confirm($form, FormStateInterface $form_state) {
+  $form_state->setRebuild();
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
-  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
-  $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
+  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
   $remove_form = $element['entities'][$delta]['form'];
 
   // Instantiate the controller and submit the form.
@@ -702,10 +702,13 @@ function inline_entity_form_remove_confirm($form, &$form_state) {
   if ($status == IEF_ENTITY_UNLINK_DELETE) {
     $entity_id = $remove_form['#entity']->id();
     $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
-    unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
+    $delete = $form_state->get(['inline_entity_form', $ief_id, 'delete']);
+    $delete['delete'][] = $entity_id;
+    $form_state->set(['inline_entity_form', $ief_id, 'delete'], $delete);
+    $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta], NULL);
   }
   elseif ($status == IEF_ENTITY_UNLINK) {
-    unset($form_state['inline_entity_form'][$ief_id]['entities'][$delta]);
+    $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta], NULL);
   }
 }
 
@@ -904,9 +907,9 @@ function inline_entity_form_close_all_forms($elements, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_cleanup_row_form_state($form, &$form_state) {
+function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
-  $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
   $entity_form = $element['entities'][$delta]['form'];
   inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
 }
