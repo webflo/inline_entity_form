@@ -320,7 +320,9 @@ class EntityInlineEntityFormController {
 
     $child_form['#ief_parents'] = $entity_form['#parents'];
 
-    $form_state->getFormObject()->setEntity($controller->submitForm($child_form, $child_form_state));
+    $controller->submitForm($child_form, $child_form_state);
+    $controller->save($child_form, $child_form_state);
+    $entity_form['#entity'] = $controller->getEntity();
 
     foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
       $form_state->set(['inline_entity_form', $id], $data);
