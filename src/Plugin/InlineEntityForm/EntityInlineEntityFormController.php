@@ -217,30 +217,32 @@ class EntityInlineEntityFormController {
     // When a form is rebuilt after Ajax processing, its #build_id and #action
     // should not change.
     // @see drupal_rebuild_form()
-    $child_form_state['rebuild_info']['copy']['#build_id'] = TRUE;
-    $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
+    $rebuild_info = $child_form_state->getRebuildInfo();
+    $rebuild_info['copy']['#build_id'] = TRUE;
+    $rebuild_info['copy']['#action'] = TRUE;
+    $child_form_state->setRebuildInfo($rebuild_info);
 
     // Copy values to child form.
-    $child_form_state['input'] = $form_state['input'];
-    $child_form_state['values'] = $form_state['values'];
-    $child_form_state['storage'] = $form_state['storage'];
+    $child_form_state->setUserInput($form_state->getUserInput());
+    $child_form_state->setValues($form_state->getValues());
+    $child_form_state->setStorage($form_state->getStorage());
 
-    $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
-    $child_form_state['langcode'] = $entity->langcode->value;
+    $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
+    $child_form_state->set('langcode', $entity->langcode->value);
 
-    $child_form_state['field'] = $form_state['field'];
-    $child_form_state['triggering_element'] = $form_state['triggering_element'];
-    $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
+    $child_form_state->set('field', $form_state->get('field'));
+    $child_form_state->setTriggeringElement($form_state->getTriggeringElement());
+    $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     $entity_form['#ief_parents'] = $entity_form['#parents'];
 
     $entity_form = $controller->buildForm($entity_form, $child_form_state);
 
-    foreach ($child_form_state['inline_entity_form'] as $id => $data) {
-      $form_state['inline_entity_form'][$id] = $data;
+    foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
+      $form_state->set(['inline_entity_form', $id], $data);
     }
 
-    $form_state['field'] = $child_form_state['field'];
+    $form_state->set('field', $child_form_state->get('field'));
     return $entity_form;
   }
 
@@ -291,35 +293,37 @@ class EntityInlineEntityFormController {
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
     $child_form_state->addBuildInfo('form_id', $controller->getFormID());
     $child_form_state->addBuildInfo('args', array());
-    $child_form_state['form_display'] = entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), $operation);
+    $child_form_state->set('form_display', entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
-    $child_form_state['no_redirect'] = TRUE;
+    $child_form_state->disableRedirect();
 
     // When a form is rebuilt after Ajax processing, its #build_id and #action
     // should not change.
     // @see drupal_rebuild_form()
-    $child_form_state['rebuild_info']['copy']['#build_id'] = TRUE;
-    $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
+    $rebuild_info = $child_form_state->getRebuildInfo();
+    $rebuild_info['copy']['#build_id'] = TRUE;
+    $rebuild_info['copy']['#action'] = TRUE;
+    $child_form_state->setRebuildInfo($rebuild_info);
 
     // Copy values to child form.
-    $child_form_state['input'] = $form_state['input'];
-    $child_form_state['values'] = $form_state['values'];
-    $child_form_state['storage'] = $form_state['storage'];
+    $child_form_state->setUserInput($form_state->getUserInput());
+    $child_form_state->setValues($form_state->getValues());
+    $child_form_state->setStorage($form_state->getStorage());
 
-    $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
-    $child_form_state['langcode'] = $entity->langcode->value;
+    $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
+    $child_form_state->set('langcode', $entity->langcode->value);
 
-    $child_form_state['field'] = $form_state['field'];
-    $child_form_state['triggering_element'] = $form_state['triggering_element'];
-    $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
+    $child_form_state->set('field', $form_state->get('field'));
+    $child_form_state->setTriggeringElement($form_state->getTriggeringElement());
+    $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     $child_form['#ief_parents'] = $entity_form['#parents'];
 
-    $entity_form['#entity'] = $controller->submit($child_form, $child_form_state);
+    $form_state->getFormObject()->setEntity($controller->submitForm($child_form, $child_form_state));
 
-    foreach ($child_form_state['inline_entity_form'] as $id => $data) {
-      $form_state['inline_entity_form'][$id] = $data;
+    foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
+      $form_state->set(['inline_entity_form', $id], $data);
     }
   }
 
@@ -459,28 +463,30 @@ class EntityInlineEntityFormController {
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
     $child_form_state->addBuildInfo('form_id', $controller->getFormID());
     $child_form_state->addBuildInfo('args', array());
-    $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
+    $child_form_state->set('form_display', entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
-    $child_form_state['no_redirect'] = TRUE;
+    $child_form_state->disableRedirect();
 
     // When a form is rebuilt after Ajax processing, its #build_id and #action
     // should not change.
     // @see drupal_rebuild_form()
-    $child_form_state['rebuild_info']['copy']['#build_id'] = TRUE;
-    $child_form_state['rebuild_info']['copy']['#action'] = TRUE;
+    $rebuild_info = $child_form_state->getRebuildInfo();
+    $rebuild_info['copy']['#build_id'] = TRUE;
+    $rebuild_info['copy']['#action'] = TRUE;
+    $child_form_state->setRebuildInfo($rebuild_info);
 
     // $child_form_state['values'] = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
     // $child_form_state['#parents'] = array();
-    $child_form_state['values'] = $form_state['values'];
+    $child_form_state->setValues($form_state->getValues());
 
-    $child_form_state['values']['menu'] = array();
-    $child_form_state['buttons'] = array();
-    $child_form_state['inline_entity_form'] = $form_state['inline_entity_form'];
-    $child_form_state['langcode'] = $entity->langcode->value;
+    $child_form_state->setValue('menu', []);
+    $child_form_state->setButtons([]);
+    $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
+    $child_form_state->set('langcode', $entity->langcode->value);
 
-    $child_form_state['triggering_element'] = $form_state['triggering_element'];
-    $child_form_state['submit_handlers'] = $form_state['submit_handlers'];
+    $child_form_state->setTriggeringElement($form_state->getTriggeringElement());
+    $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     $this->child_form_state = $child_form_state;
     $this->child_form_controller = $controller;

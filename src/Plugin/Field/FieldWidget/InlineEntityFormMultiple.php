@@ -97,7 +97,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       ),
     );
     // The single widget doesn't offer autocomplete functionality.
-    if ($form_state['widget']['type'] == 'inline_entity_form_single') {
+    if ($form_state->get('widget')['type'] == 'inline_entity_form_single') {
       $form['allow_existing']['#access'] = FALSE;
       $form['match_operator']['#access'] = FALSE;
     }
@@ -410,7 +410,8 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
 
     // If no form is open, show buttons that open one.
-    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'form']))) {
+    $inline_entity_form_form = $form_state->get(['inline_entity_form', $this->getIefId(), 'form']);
+    if (empty($inline_entity_form_form)) {
       $element['actions'] = array(
         '#attributes' => array('class' => array('container-inline')),
         '#type' => 'container',
@@ -492,19 +493,19 @@ class InlineEntityFormMultiple extends WidgetBase {
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
         if (!$this->iefController->getSetting('allow_existing') && $this->fieldDefinition->isRequired()
-          && empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])
+          && empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])
           && count($settings['handler_settings']['target_bundles']) == 1
         ) {
           $element['form']['actions']['ief_add_cancel']['#access'] = FALSE;
         }
       }
-      elseif ($form_state['inline_entity_form'][$this->getIefId()]['form'] == 'ief_add_existing') {
+      elseif ($form_state->get('inline_entity_form')[$this->getIefId()]['form'] == 'ief_add_existing') {
         $element['form'] += inline_entity_form_reference_form($this->iefController, $element['form'], $form_state);
       }
 
       // No entities have been added. Remove the outer fieldset to reduce
       // visual noise caused by having two titles.
-      if (empty($form_state['inline_entity_form'][$this->getIefId()]['entities'])) {
+      if (empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])) {
         $element['#type'] = 'container';
       }
     }

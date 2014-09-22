@@ -251,7 +251,8 @@ function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
  * after inline_entity_form_field_widget_form() is called.
  */
 function inline_entity_form_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  if (!empty($form_state->get('inline_entity_form'))) {
+  $inline_entity_form = $form_state->get('inline_entity_form');
+  if (!empty($inline_entity_form)) {
     $submit = array_merge(array('inline_entity_form_trigger_submit'), $form['#submit']);
 
     if (!empty($form['submit'])) {
@@ -302,7 +303,7 @@ function inline_entity_form_update_row_weights($element, &$form_state, $form) {
  * @return
  *   The form array containing the embedded entity form.
  */
-function inline_entity_form_entity_form($controller, $entity_form, &$form_state) {
+function inline_entity_form_entity_form($controller, $entity_form, FormStateInterface $form_state) {
   $labels = $controller->labels();
   // Build a deta suffix that's appended to button #name keys for uniqueness.
   $delta = $entity_form['#ief_id'];
@@ -407,17 +408,18 @@ function inline_entity_form_entity_form($controller, $entity_form, &$form_state)
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_entity_form_validate(&$entity_form, &$form_state) {
+function inline_entity_form_entity_form_validate(&$entity_form, FormStateInterface $form_state) {
   $ief_id = $entity_form['#ief_id'];
-  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
+  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
   // Instantiate the controller and validate the form.
   $controller = inline_entity_form_get_controller($instance);
   $controller->entityFormValidate($entity_form, $form_state);
 
   // Unset untriggered conditional fields errors
-  $errors = form_get_errors($form_state);
-  if ($errors && !empty($form_state['conditional_fields_untriggered_dependents'])) {
-    foreach ($form_state['conditional_fields_untriggered_dependents'] as $untriggered_dependents ) {
+  $errors = $form_state->getErrors();
+  $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
+  if ($errors && !empty($conditional_fields_untriggered_dependents)) {
+    foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
       if (!empty($untriggered_dependents['errors'])) {
         foreach (array_keys($untriggered_dependents['errors']) as $key) {
           unset($errors[$key]);
@@ -438,32 +440,37 @@ function inline_entity_form_entity_form_validate(&$entity_form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_entity_form_submit($entity_form, &$form_state) {
+function inline_entity_form_entity_form_submit($entity_form, FormStateInterface $form_state) {
   $ief_id = $entity_form['#ief_id'];
-  $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
+  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
   // Instantiate the controller and validate the form.
+  $entity = $form_state->getFormObject()->getEntity();
   $controller = inline_entity_form_get_controller($instance);
-  $controller->entityFormSubmit($entity_form, $form_state);
+  $controller->entityFormSubmit($entity, $entity_form, $form_state);
   inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
 
   if ($entity_form['#op'] == 'add') {
     // Determine the correct weight of the new element.
     $weight = 0;
-    if (!empty($form_state['inline_entity_form'][$ief_id]['entities'])) {
-      $weight = max(array_keys($form_state['inline_entity_form'][$ief_id]['entities'])) + 1;
+    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+    if (!empty($entities)) {
+      $weight = max(array_keys($entities)) + 1;
     }
     // Add the entity to form state, mark it for saving, and close the form.
-    $form_state['inline_entity_form'][$ief_id]['entities'][] = array(
-      'entity' => $entity_form['#entity'],
+    $entities[] = array(
+      'entity' => $entity,
       '_weight' => $weight,
       'form' => NULL,
       'needs_save' => TRUE,
     );
+    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
   }
   else {
     $delta = $entity_form['#ief_row_delta'];
-    $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['entity'] = $entity_form['#entity'];
-    $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['needs_save'] = TRUE;
+    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+    $entities[$delta]['entity'] = $entity;
+    $entities[$delta]['needs_save'] = TRUE;
+    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
   }
 }
 
@@ -710,14 +717,15 @@ function inline_entity_form_remove_confirm($form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_trigger_submit($form, &$form_state) {
-  if (!empty($form_state['triggering_element']['#ief_submit_all'])) {
+function inline_entity_form_trigger_submit($form, FormStateInterface $form_state) {
+  $triggered_element = $form_state->getTriggeringElement();
+  if (!empty($triggered_element['#ief_submit_all'])) {
     // The parent form was submitted, process all IEFs and their children.
     inline_entity_form_submit($form, $form_state);
   }
   else {
     // A specific entity form was submitted, process it and all of its children.
-    $array_parents = $form_state['triggering_element']['#array_parents'];
+    $array_parents = $triggered_element['#array_parents'];
     $array_parents = array_slice($array_parents, 0, -2);
     $element = NestedArray::getValue($form, $array_parents);
     inline_entity_form_submit($element, $form_state);
@@ -734,7 +742,7 @@ function inline_entity_form_trigger_submit($form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_submit($elements, &$form_state) {
+function inline_entity_form_submit($elements, FormStateInterface $form_state) {
   // Recurse through all children.
   foreach (element_children($elements) as $key) {
     if (!empty($elements[$key])) {
@@ -788,12 +796,12 @@ function inline_entity_form_open_form($form, FormStateInterface $form_state) {
  *
  * @see inline_entity_form_open_form().
  */
-function inline_entity_form_close_form($form, &$form_state) {
+function inline_entity_form_close_form($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
 
-  $form_state['rebuild'] = TRUE;
-  $form_state['inline_entity_form'][$ief_id]['form'] = NULL;
+  $form_state->setRebuild();
+  $form_state->set(['inline_entity_form', $ief_id, 'form'], NULL);
 }
 
 /**
@@ -804,7 +812,7 @@ function inline_entity_form_close_form($form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_cleanup_form_state($form, &$form_state) {
+function inline_entity_form_cleanup_form_state($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   inline_entity_form_cleanup_entity_form_state($element['form'], $form_state);
 }
@@ -820,13 +828,13 @@ function inline_entity_form_cleanup_form_state($form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_open_row_form($form, &$form_state) {
+function inline_entity_form_open_row_form($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
-  $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
 
-  $form_state['rebuild'] = TRUE;
-  $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['form'] = $form_state['triggering_element']['#ief_row_form'];
+  $form_state->setRebuild();
+  $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta, 'form'], $form_state->getTriggeringElement()['#ief_row_form']);
 }
 
 /**
@@ -839,13 +847,13 @@ function inline_entity_form_open_row_form($form, &$form_state) {
  *
  * @see inline_entity_form_open_row_form().
  */
-function inline_entity_form_close_row_form($form, &$form_state) {
+function inline_entity_form_close_row_form($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $ief_id = $element['#ief_id'];
-  $delta = $form_state['triggering_element']['#ief_row_delta'];
+  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
 
-  $form_state['rebuild'] = TRUE;
-  $form_state['inline_entity_form'][$ief_id]['entities'][$delta]['form'] = NULL;
+  $form_state->setRebuild();
+  $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta, 'form'], NULL);
 }
 
 /**
@@ -880,9 +888,9 @@ function inline_entity_form_close_all_forms($elements, &$form_state) {
   if (!empty($elements['#ief_id'])) {
     $ief_id = $elements['#ief_id'];
     // Close the main form.
-    $form_state['inline_entity_form'][$ief_id]['form'] = NULL;
+    $form_state->set(['inline_entity_form', $ief_id, 'form'], NULL);
     // Close the row forms.
-    foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as &$value) {
+    foreach ($form_state->get(['inline_entity_form', $ief_id, 'entities']) as &$value) {
       $value['form'] = NULL;
     }
   }
@@ -932,7 +940,7 @@ function inline_entity_form_required_field($element, &$form_state, $form) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_cleanup_entity_form_state($entity_form, &$form_state) {
+function inline_entity_form_cleanup_entity_form_state($entity_form, FormStateInterface $form_state) {
   $info = \Drupal::entityManager()->getDefinition($entity_form['#entity_type']);
   if (!$info->isFieldable()) {
     // The entity type is not fieldable, nothing to cleanup.
