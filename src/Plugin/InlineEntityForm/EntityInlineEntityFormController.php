@@ -205,15 +205,14 @@ class EntityInlineEntityFormController {
     $child_form_state = new Drupal\Core\Form\FormState();
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
-
-    $child_form_state['build_info']['callback_object'] = $controller;
-    $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
-    $child_form_state['build_info']['form_id'] = $controller->getFormID();
-    $child_form_state['build_info']['args'] = array();
-    $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
+    $child_form_state->addBuildInfo('callback_object', $controller);
+    $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
+    $child_form_state->addBuildInfo('form_id', $controller->getFormID());
+    $child_form_state->addBuildInfo('args', array());
+    $child_form_state->set('form_display', entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
-    $child_form_state['no_redirect'] = TRUE;
+    $child_form_state->set('no_redirect', TRUE);
 
     // When a form is rebuilt after Ajax processing, its #build_id and #action
     // should not change.
@@ -288,10 +287,10 @@ class EntityInlineEntityFormController {
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
-    $child_form_state['build_info']['callback_object'] = $controller;
-    $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
-    $child_form_state['build_info']['form_id'] = $controller->getFormID();
-    $child_form_state['build_info']['args'] = array();
+    $child_form_state->addBuildInfo('callback_object', $controller);
+    $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
+    $child_form_state->addBuildInfo('form_id', $controller->getFormID());
+    $child_form_state->addBuildInfo('args', array());
     $child_form_state['form_display'] = entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), $operation);
 
     // Since some of the submit handlers are run, redirects need to be disabled.
@@ -452,14 +451,14 @@ class EntityInlineEntityFormController {
    * @return array
    */
   protected function buildChildFormState(&$entity_form, &$form_state, $entity, $operation) {
-    $child_form_state = array();
+    $child_form_state = new FormState();
     $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
-    $child_form_state['build_info']['callback_object'] = $controller;
-    $child_form_state['build_info']['base_form_id'] = $controller->getBaseFormID();
-    $child_form_state['build_info']['form_id'] = $controller->getFormID();
-    $child_form_state['build_info']['args'] = array();
+    $child_form_state->addBuildInfo('callback_object', $controller);
+    $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
+    $child_form_state->addBuildInfo('form_id', $controller->getFormID());
+    $child_form_state->addBuildInfo('args', array());
     $child_form_state['form_display'] = entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation);
 
     // Since some of the submit handlers are run, redirects need to be disabled.
