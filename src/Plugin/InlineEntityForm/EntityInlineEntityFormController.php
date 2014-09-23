@@ -195,7 +195,7 @@ class EntityInlineEntityFormController {
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function entityForm($entity_form, &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -209,6 +209,12 @@ class EntityInlineEntityFormController {
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
     $child_form_state->addBuildInfo('form_id', $controller->getFormID());
     $child_form_state->addBuildInfo('args', array());
+
+    // Copy values to child form.
+    $child_form_state->setUserInput($form_state->getUserInput());
+    $child_form_state->setValues($form_state->getValues());
+    $child_form_state->setStorage($form_state->getStorage());
+
     $child_form_state->set('form_display', entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
@@ -221,11 +227,6 @@ class EntityInlineEntityFormController {
     $rebuild_info['copy']['#build_id'] = TRUE;
     $rebuild_info['copy']['#action'] = TRUE;
     $child_form_state->setRebuildInfo($rebuild_info);
-
-    // Copy values to child form.
-    $child_form_state->setUserInput($form_state->getUserInput());
-    $child_form_state->setValues($form_state->getValues());
-    $child_form_state->setStorage($form_state->getStorage());
 
     $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
     $child_form_state->set('langcode', $entity->langcode->value);
@@ -293,6 +294,12 @@ class EntityInlineEntityFormController {
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
     $child_form_state->addBuildInfo('form_id', $controller->getFormID());
     $child_form_state->addBuildInfo('args', array());
+
+    // Copy values to child form.
+    $child_form_state->setUserInput($form_state->getUserInput());
+    $child_form_state->setValues($form_state->getValues());
+    $child_form_state->setStorage($form_state->getStorage());
+
     $child_form_state->set('form_display', entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
@@ -305,11 +312,6 @@ class EntityInlineEntityFormController {
     $rebuild_info['copy']['#build_id'] = TRUE;
     $rebuild_info['copy']['#action'] = TRUE;
     $child_form_state->setRebuildInfo($rebuild_info);
-
-    // Copy values to child form.
-    $child_form_state->setUserInput($form_state->getUserInput());
-    $child_form_state->setValues($form_state->getValues());
-    $child_form_state->setStorage($form_state->getStorage());
 
     $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
     $child_form_state->set('langcode', $entity->langcode->value);
