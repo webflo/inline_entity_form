@@ -702,7 +702,6 @@ function inline_entity_form_remove_confirm($form, FormStateInterface $form_state
   $status = $controller->removeFormSubmit($remove_form, $form_state);
   if ($status == IEF_ENTITY_UNLINK_DELETE) {
     $entity_id = $remove_form['#entity']->id();
-    $form_state['inline_entity_form'][$ief_id]['delete'][] = $entity_id;
     $delete = $form_state->get(['inline_entity_form', $ief_id, 'delete']);
     $delete['delete'][] = $entity_id;
     $form_state->set(['inline_entity_form', $ief_id, 'delete'], $delete);
