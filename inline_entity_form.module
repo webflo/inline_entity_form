@@ -880,7 +880,7 @@ function inline_entity_form_close_child_forms($form, &$form_state) {
  * @param $form_state
  *   The form state of the parent form.
  */
-function inline_entity_form_close_all_forms($elements, &$form_state) {
+function inline_entity_form_close_all_forms($elements, FormStateInterface $form_state) {
   // Recurse through all children.
   foreach (element_children($elements) as $key) {
     if (!empty($elements[$key])) {
@@ -893,9 +893,11 @@ function inline_entity_form_close_all_forms($elements, &$form_state) {
     // Close the main form.
     $form_state->set(['inline_entity_form', $ief_id, 'form'], NULL);
     // Close the row forms.
-    foreach ($form_state->get(['inline_entity_form', $ief_id, 'entities']) as &$value) {
-      $value['form'] = NULL;
+    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+    foreach ($entities as $key => $value) {
+      $entities[$key]['form'] = NULL;
     }
+    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
   }
 }
 
@@ -917,7 +919,7 @@ function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $fo
 /**
  * IEF widget #element_validate callback: Required field validation.
  */
-function inline_entity_form_required_field($element, &$form_state, $form) {
+function inline_entity_form_required_field($element, FormStateInterface $form_state, $form) {
   $ief_id = $element['#ief_id'];
   $has_children = !empty($form_state['inline_entity_form'][$ief_id]['entities']);
   $form_open = !empty($form_state['inline_entity_form'][$ief_id]['form']);
@@ -926,7 +928,7 @@ function inline_entity_form_required_field($element, &$form_state, $form) {
   // or by adding a new referenced entity).
   if (!$has_children && !$form_open) {
     $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
-    form_error($element, t('!name field is required.', array('!name' => $instance['label'])));
+    $form_state->setError($element, t('!name field is required.', array('!name' => $instance['label'])));
   }
 }
 
