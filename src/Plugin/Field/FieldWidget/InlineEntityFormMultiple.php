@@ -187,7 +187,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $this->setIefId(sha1(implode('-', $parents)));
 
     // Get the langcode of the parent entity.
-    $parent_langcode = $items->getParent()->language()->id;
+    $parent_langcode = $items->getParent()->getValue()->language()->id;
 
     // Determine the wrapper ID for the entire element.
     $wrapper = 'inline-entity-form-' . $this->getIefId();
@@ -205,19 +205,19 @@ class InlineEntityFormMultiple extends WidgetBase {
     $element['#attached']['js'][] = drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js';
 
     // Initialize the IEF array in form state.
-    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'settings']))) {
+    if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'settings'])) {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'settings'], $settings);
     }
 
-    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'instance']))) {
+    if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'instance'])) {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'instance'], $this->fieldDefinition);
     }
 
-    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'form']))) {
+    if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'form'])) {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'form'], NULL);
     }
 
-    if (empty($form_state->get(['inline_entity_form', $this->getIefId(), 'array_parents']))) {
+    if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'array_parents'])) {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'array_parents'], $parents);
     }
 
