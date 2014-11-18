@@ -179,6 +179,7 @@ function inline_entity_form_theme() {
   return array(
     'inline_entity_form_entity_table' => array(
       'render element' => 'form',
+      'function' => 'theme_inline_entity_form_entity_table',
     ),
   );
 }

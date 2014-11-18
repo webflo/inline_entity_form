@@ -187,7 +187,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     $this->setIefId(sha1(implode('-', $parents)));
 
     // Get the langcode of the parent entity.
-    $parent_langcode = $items->getParent()->getValue()->language()->id;
+    $parent_langcode = $items->getParent()->getValue()->language()->getId();
 
     // Determine the wrapper ID for the entire element.
     $wrapper = 'inline-entity-form-' . $this->getIefId();
