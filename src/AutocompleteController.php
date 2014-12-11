@@ -6,9 +6,9 @@
  */
 
 namespace Drupal\inline_entity_form;
+use Drupal\Component\Utility\String;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -89,7 +89,7 @@ class AutocompleteController implements ContainerInjectionInterface {
     $matches = array();
     foreach ($results as $result) {
       // Strip things like starting/trailing white spaces, line breaks and tags.
-      $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(decode_entities(strip_tags($result)))));
+      $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(String::decodeEntities(strip_tags($result)))));
       $matches[] = ['value' => $key, 'label' => '<div class="reference-autocomplete">' . $result . '</div>'];
     }
 
