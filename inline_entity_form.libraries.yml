@@ -1,0 +1,9 @@
+widget:
+  version: VERSION
+  js:
+    inline_entity_form.js: {}
+  dependencies:
+    - core/jquery
+    - core/jquery.once
+    - core/drupal
+    - core/drupalSettings

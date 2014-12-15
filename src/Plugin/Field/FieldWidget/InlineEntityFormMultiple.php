@@ -202,7 +202,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#ief_root' => TRUE,
       ) + $element;
 
-    $element['#attached']['js'][] = drupal_get_path('module', 'inline_entity_form') . '/inline_entity_form.js';
+    $element['#attached']['library'][] = 'inline_entity_form/widget';
 
     // Initialize the IEF array in form state.
     if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'settings'])) {
