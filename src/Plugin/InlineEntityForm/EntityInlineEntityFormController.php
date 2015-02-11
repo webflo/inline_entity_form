@@ -102,13 +102,11 @@ class EntityInlineEntityFormController {
    *
    * @return
    *   An array of field information, keyed by field name. Allowed keys:
-   *   - type: 'field' or 'property',
+   *   - type: 'property' or 'callback'.
    *   - label: Human readable name of the field, shown to the user.
    *   - weight: The position of the field relative to other fields.
-   *   Special keys for type 'field', all optional:
-   *   - formatter: The formatter used to display the field, or "hidden".
-   *   - settings: An array passed to the formatter. If empty, defaults are used.
-   *   - delta: If provided, limits the field to just the specified delta.
+   *   - callback: The callback function to render the table field.
+   *   - callback_arguments: An array of arguments to pass to the callback function.
    */
   public function tableFields($bundles) {
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
