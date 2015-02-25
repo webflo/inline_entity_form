@@ -7,13 +7,14 @@
 
 namespace Drupal\inline_entity_form;
 
+use Drupal\Component\Plugin\ConfigurablePluginInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Defines the interface for entity browser widgets.
  */
-interface InlineEntityFormControllerInterface {
+interface InlineEntityFormControllerInterface extends ConfigurablePluginInterface {
 
   /**
    * Returns an array of css filepaths for the current entity type, keyed
@@ -79,11 +80,6 @@ interface InlineEntityFormControllerInterface {
    *   A setting value.
    */
   public function getSetting($name);
-
-  /**
-   * Returns an array of default settings in the form of key => value.
-   */
-  public function defaultSettings();
 
   /**
    * Returns the entity type managed by this controller.

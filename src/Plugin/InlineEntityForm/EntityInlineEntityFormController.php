@@ -12,6 +12,7 @@ use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
+use Drupal\Component\Plugin\PluginBase;
 
 /**
  * Generic entity inline form.
@@ -23,14 +24,30 @@ use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
  *
  * @see \Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm
  */
-class EntityInlineEntityFormController implements InlineEntityFormControllerInterface {
+class EntityInlineEntityFormController extends PluginBase implements InlineEntityFormControllerInterface {
 
+  /**
+   * Entity type ID.
+   *
+   * @var string
+   */
   protected $entityType;
-  public $settings;
 
+  /**
+   * Constructs the inline entity form controller.
+   *
+   * @param array $configuration
+   *   A configuration array containing information about the plugin instance.
+   * @param string $plugin_id
+   *   The plugin_id for the plugin instance.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   */
   public function __construct($configuration, $plugin_id, $plugin_definition) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+
     list(, $this->entityType) = explode(':', $plugin_id, 2);
-    $this->settings = $configuration + $this->defaultSettings();
+    $this->setConfiguration($configuration);
   }
 
   /**
@@ -101,23 +118,43 @@ class EntityInlineEntityFormController implements InlineEntityFormControllerInte
   /**
    * {@inheritdoc}
    */
-  public function getSetting($name) {
-    return $this->settings[$name];
+  public function defaultConfiguration() {
+    return [
+     'allow_existing' => FALSE,
+     'match_operator' => 'CONTAINS',
+     'delete_references' => FALSE,
+     'override_labels' => FALSE,
+     'label_singular' => '',
+     'label_plural' => '',
+    ];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function defaultSettings() {
-    $defaults = array();
-    $defaults['allow_existing'] = FALSE;
-    $defaults['match_operator'] = 'CONTAINS';
-    $defaults['delete_references'] = FALSE;
-    $defaults['override_labels'] = FALSE;
-    $defaults['label_singular'] = '';
-    $defaults['label_plural'] = '';
+  public function getConfiguration() {
+    return $this->configuration;
+  }
 
-    return $defaults;
+  /**
+   * {@inheritdoc}
+   */
+  public function setConfiguration(array $configuration) {
+    $this->configuration = $configuration + $this->defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSetting($name) {
+    return $this->configuration[$name];
   }
 
   /**
