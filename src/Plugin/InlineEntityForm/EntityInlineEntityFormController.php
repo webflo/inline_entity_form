@@ -3,16 +3,19 @@
 /**
  * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormController.
  */
+
 namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 
 use Drupal\Component\Utility\NestedArray;
-use Drupal;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
 use Drupal\Component\Plugin\PluginBase;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Entity\EntityManagerInterface;
 
 /**
  * Generic entity inline form.
@@ -24,7 +27,7 @@ use Drupal\Component\Plugin\PluginBase;
  *
  * @see \Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm
  */
-class EntityInlineEntityFormController extends PluginBase implements InlineEntityFormControllerInterface {
+class EntityInlineEntityFormController extends PluginBase implements InlineEntityFormControllerInterface, ContainerFactoryPluginInterface {
 
   /**
    * Entity type ID.
@@ -32,6 +35,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @var string
    */
   protected $entityType;
+
+  /**
+   * Entity manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityManagerInterface
+   */
+  protected $entityManager;
 
   /**
    * Constructs the inline entity form controller.
@@ -43,11 +53,24 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
    */
-  public function __construct($configuration, $plugin_id, $plugin_definition) {
+  public function __construct($configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     list(, $this->entityType) = explode(':', $plugin_id, 2);
+    $this->entityManager = $entity_manager;
     $this->setConfiguration($configuration);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('entity.manager')
+    );
   }
 
   /**
@@ -62,10 +85,10 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    */
   public function labels() {
     // The admin has specified the exact labels that should be used.
-    if ($this->settings['override_labels']) {
+    if ($this->configuration['override_labels']) {
       $labels = [
-        'singular' => $this->settings['label_singular'],
-        'plural' => $this->settings['label_plural'],
+        'singular' => $this->configuration['label_singular'],
+        'plural' => $this->configuration['label_plural'],
       ];
     }
     else {
@@ -82,7 +105,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function tableFields($bundles) {
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityType);
     // $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
     $metadata = array();
 
@@ -175,7 +198,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $operation = 'default';
 
     $child_form_state = new Drupal\Core\Form\FormState();
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
     $child_form_state->addBuildInfo('callback_object', $controller);
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
@@ -245,7 +268,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $child_form_state = new FormState();
 //    $child_form_state->set('values', NestedArray::getValue($form_state['values'], $entity_form['#parents']));
 
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state->addBuildInfo('callback_object', $controller);
@@ -384,13 +407,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * @param $entity_form
    * @param $form_state
-   * @param $entity
+   * @param \Drupal\Core\Entity\EntityInterface $entity
    * @param $operation
    * @return array
    */
-  protected function buildChildFormState(&$entity_form, &$form_state, $entity, $operation) {
+  protected function buildChildFormState(&$entity_form, &$form_state, EntityInterface $entity, $operation) {
     $child_form_state = new FormState();
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state->addBuildInfo('callback_object', $controller);
