@@ -45,36 +45,19 @@ class EntityInlineEntityFormController implements InlineEntityFormControllerInte
   /**
    * {@inheritdoc}
    */
-  public function defaultLabels() {
-    $labels = array(
-      'singular' => t('entity'),
-      'plural' => t('entities'),
-    );
-
-    return $labels;
-
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
-    // Commerce and its contribs declare permission labels that can be used
-    // for more precise and user-friendly strings.
-    if (!empty($info['permission labels'])) {
-      $labels = $info['permission labels'];
-    }
-
-    return $labels;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function labels() {
-    $labels = $this->defaultLabels();
-
     // The admin has specified the exact labels that should be used.
     if ($this->settings['override_labels']) {
-      $labels = array(
+      $labels = [
         'singular' => $this->settings['label_singular'],
         'plural' => $this->settings['label_plural'],
-      );
+      ];
+    }
+    else {
+      $labels = [
+        'singular' => t('entity'),
+        'plural' => t('entities'),
+      ];
     }
 
     return $labels;

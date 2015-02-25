@@ -34,10 +34,12 @@ interface InlineEntityFormControllerInterface {
   /**
    * Returns an array of entity type labels (singular, plural) fit to be
    * included in the UI text.
+   *
+   * @return array
+   *   Array containing two values:
+   *     - singular: label for singular form,
+   *     - plural: label for plural form.
    */
-  public function defaultLabels();
-
-  // TODO
   public function labels();
 
   /**
