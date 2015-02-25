@@ -1,10 +1,8 @@
 <?php
 
 /**
- * @file
- * Defines the base inline entity form controller.
+ * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormController.
  */
-
 namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 
 use Drupal\Component\Utility\NestedArray;
@@ -39,7 +37,7 @@ class EntityInlineEntityFormController implements InlineEntityFormControllerInte
    * {@inheritdoc}
    */
   public function css() {
-    return array();
+    return [];
   }
 
   /**

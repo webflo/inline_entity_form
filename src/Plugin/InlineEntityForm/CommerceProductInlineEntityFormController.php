@@ -1,19 +1,19 @@
 <?php
 
 /**
- * @file
- * Defines the inline entity form controller for Commerce Products.
+ * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\CommerceProductInlineEntityFormController.
  */
+namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 
 class CommerceProductInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**
-   * Overrides EntityInlineEntityFormController::css().
+   * {@inheritdoc}
    */
   public function css() {
-    return array(
+    return [
       'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/commerce-product.css',
-    );
+    ];
   }
 
   /**

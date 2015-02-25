@@ -23,11 +23,14 @@ interface InlineEntityFormControllerInterface {
    * If a CSS file matching the current theme exists, it will also be included.
    *
    * @code
-   * return array(
+   * return [
    *   'base' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.base.css',
    *   'seven' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.seven.css',
-   * );
+   * ];
    * @endcode
+   *
+   * @return array
+   *   List of css files for inclusion keyed by theme name.
    */
   public function css();
 
