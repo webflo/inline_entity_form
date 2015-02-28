@@ -82,12 +82,12 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
   public function getSetting($name);
 
   /**
-   * Returns the entity type managed by this controller.
+   * Returns the id of entity type managed by this controller.
    *
-   * @return
-   *   The entity type.
+   * @return string
+   *   The entity type id..
    */
-  public function entityType();
+  public function entityTypeId();
 
   /**
    * Returns the entity form to be shown through the IEF widget.
@@ -112,7 +112,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function entityFormValidate($entity_form, &$form_state);
+  public function entityFormValidate($entity_form, FormStateInterface &$form_state);
 
   /**
    * Handles the submission of an entity form.
@@ -136,7 +136,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function removeForm($remove_form, &$form_state);
+  public function removeForm($remove_form, FormStateInterface &$form_state);
 
   /**
    * Handles the submission of a remove form.

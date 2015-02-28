@@ -34,7 +34,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    *
    * @var string
    */
-  protected $entityType;
+  protected $entityTypeId;
 
   /**
    * Entity manager service.
@@ -56,7 +56,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   public function __construct($configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
-    list(, $this->entityType) = explode(':', $plugin_id, 2);
+    list(, $this->entityTypeId) = explode(':', $plugin_id, 2);
     $this->entityManager = $entity_manager;
     $this->setConfiguration($configuration);
   }
@@ -105,7 +105,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function tableFields($bundles) {
-    $info = $this->entityManager->getDefinition($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityTypeId);
     // $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
     $metadata = array();
 
@@ -183,8 +183,8 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityType() {
-    return $this->entityType;
+  public function entityTypeId() {
+    return $this->entityTypeId;
   }
 
   /**
@@ -197,7 +197,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $child_form_state = new Drupal\Core\Form\FormState();
+    $child_form_state = new FormState();
     $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
     $child_form_state->addBuildInfo('callback_object', $controller);
@@ -245,7 +245,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, &$form_state) {
+  public function entityFormValidate($entity_form, FormStateInterface &$form_state) {
     /*
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $entity = $entity_form['#entity'];
@@ -325,7 +325,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @param $form_state
    *   The form state of the parent form.
    */
-  protected function cleanupFieldFormState($entity_form, &$form_state) {
+  protected function cleanupFieldFormState($entity_form, FormStateInterface &$form_state) {
     $bundle = $entity_form['#entity']->bundle();
     /**
      * @var \Drupal\field\Entity\FieldInstanceConfig[] $instances
@@ -348,7 +348,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function removeForm($remove_form, &$form_state) {
+  public function removeForm($remove_form, FormStateInterface &$form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
     $entity_label = $entity->label();
@@ -401,7 +401,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function delete($ids, $context) {
-    entity_delete_multiple($this->entityType, $ids);
+    entity_delete_multiple($this->entityTypeId, $ids);
   }
 
   /**
