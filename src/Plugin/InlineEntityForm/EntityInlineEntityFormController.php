@@ -76,7 +76,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function css() {
+  public function libraries() {
     return [];
   }
 

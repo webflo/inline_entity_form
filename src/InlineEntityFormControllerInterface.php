@@ -17,23 +17,23 @@ use Drupal\Core\Entity\EntityInterface;
 interface InlineEntityFormControllerInterface extends ConfigurablePluginInterface {
 
   /**
-   * Returns an array of css filepaths for the current entity type, keyed
-   * by theme name.
+   * Returns an array of libraries for the current entity type, keyed by theme
+   * name.
    *
-   * If provided, the "base" CSS file is included for all themes.
-   * If a CSS file matching the current theme exists, it will also be included.
+   * If provided, the "base" library is included for all themes. If a library
+   * matching the current theme exists, it will also be included.
    *
    * @code
    * return [
-   *   'base' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.base.css',
-   *   'seven' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.seven.css',
+   *   'base' => 'test_module/inline_entity_form.base',
+   *   'seven' => 'test_module/inline_entity_form.seven',
    * ];
    * @endcode
    *
    * @return array
-   *   List of css files for inclusion keyed by theme name.
+   *   List of libraries for inclusion keyed by theme name.
    */
-  public function css();
+  public function libraries();
 
   /**
    * Returns an array of entity type labels (singular, plural) fit to be

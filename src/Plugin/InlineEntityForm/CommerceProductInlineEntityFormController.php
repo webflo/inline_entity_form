@@ -14,9 +14,9 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   /**
    * {@inheritdoc}
    */
-  public function css() {
+  public function libraries() {
     return [
-      'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/commerce-product.css',
+      'base' => 'inline_entity_form/commerce_product.base',
     ];
   }
 
