@@ -102,7 +102,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function entityForm($entity_form, FormStateInterface $form_state);
+  public function entityForm($entity_form, FormStateInterface &$form_state);
 
   /**
    * Validates the entity form.
@@ -126,7 +126,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * @param $form_state
    *   The form state of the parent form.
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state);
+  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state);
 
   /**
    * Returns the remove form to be shown through the IEF widget.
@@ -150,7 +150,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * @return
    *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
    */
-  public function removeFormSubmit($remove_form, FormStateInterface $form_state);
+  public function removeFormSubmit($remove_form, FormStateInterface &$form_state);
 
   /**
    * Permanently saves the given entity.

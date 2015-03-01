@@ -5,16 +5,21 @@
  * Defines the inline entity form controller for Taxonomy terms.
  */
 
+namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+
 class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**
-   * Overrides EntityInlineEntityFormController::labels().
+   * {@inheritdoc}
    */
   public function labels() {
-    $labels = array(
+    $labels = [
       'singular' => t('term'),
       'plural' => t('terms'),
-    );
+    ];
     return $labels;
   }
 
@@ -28,7 +33,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   public function tableFields($bundles) {
     $fields = array();
 
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityTypeId);
     $metadata = entity_get_property_info($this->entityType);
 
     $label_key = $info['entity_keys']['label'];
@@ -49,9 +54,9 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityForm().
+   * {@inheritdoc}
    */
-  public function entityForm($entity_form, &$form_state) {
+  public function entityForm($entity_form, FormStateInterface &$form_state) {
     $term = $entity_form['#entity'];
     $extra_fields = field_info_extra_fields('taxonomy_term', $term->vocabulary_machine_name, 'form');
 
@@ -91,11 +96,10 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
     return $entity_form;
   }
 
-
   /**
-   * Overrides EntityInlineEntityFormController::entityFormSubmit().
+   * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $entity = $entity_form['#entity'];
@@ -112,9 +116,9 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::save().
+   * {@inheritdoc}
    */
-  public function save($entity, $context) {
+  public function save(EntityInterface $entity, $context) {
     taxonomy_term_save($entity);
   }
 

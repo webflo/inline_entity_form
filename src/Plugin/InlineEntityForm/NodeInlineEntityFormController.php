@@ -23,31 +23,26 @@ use Drupal\Core\Form\FormStateInterface;
 class NodeInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**
-   * @var \Drupal\Core\Entity\EntityFormControllerInterface
-   */
-  protected $formController;
-
-  /**
-  * Overrides EntityInlineEntityFormController::labels().
+   * {@inheritdoc}
    */
   public function labels() {
-    $labels = array(
+    $labels = [
       'singular' => t('node'),
       'plural' => t('nodes'),
-    );
+    ];
     return $labels;
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::tableFields().
+   * {@inheritdoc}
    */
   public function tableFields($bundles) {
     $fields = parent::tableFields($bundles);
-    $fields['status'] = array(
+    $fields['status'] = [
       'type' => 'property',
       'label' => t('Status'),
       'weight' => 100,
-    );
+    ];
 
     return $fields;
   }

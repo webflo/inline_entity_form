@@ -190,7 +190,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityForm($entity_form, FormStateInterface $form_state) {
+  public function entityForm($entity_form, FormStateInterface &$form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -256,7 +256,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -373,7 +373,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function removeFormSubmit($remove_form, FormStateInterface $form_state) {
+  public function removeFormSubmit($remove_form, FormStateInterface &$form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
     $form_values = NestedArray::getValue($form_state->getValues(), $remove_form['#parents']);
@@ -411,7 +411,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @param $operation
    * @return array
    */
-  protected function buildChildFormState(&$entity_form, &$form_state, EntityInterface $entity, $operation) {
+  protected function buildChildFormState(&$entity_form, FormStateInterface &$form_state, EntityInterface $entity, $operation) {
     $child_form_state = new FormState();
     $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
