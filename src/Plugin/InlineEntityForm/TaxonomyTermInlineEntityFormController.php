@@ -56,7 +56,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   /**
    * {@inheritdoc}
    */
-  public function entityForm($entity_form, FormStateInterface &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     $term = $entity_form['#entity'];
     $extra_fields = field_info_extra_fields('taxonomy_term', $term->vocabulary_machine_name, 'form');
 
@@ -99,7 +99,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $entity = $entity_form['#entity'];

@@ -190,7 +190,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityForm($entity_form, FormStateInterface &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -245,7 +245,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, FormStateInterface &$form_state) {
+  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
     /*
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $entity = $entity_form['#entity'];
@@ -256,7 +256,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     /**
      * @var \Drupal\Core\Entity\EntityInterface $entity
      */
@@ -348,7 +348,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function removeForm($remove_form, FormStateInterface &$form_state) {
+  public function removeForm($remove_form, FormStateInterface $form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
     $entity_label = $entity->label();
@@ -373,7 +373,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function removeFormSubmit($remove_form, FormStateInterface &$form_state) {
+  public function removeFormSubmit($remove_form, FormStateInterface $form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
     $form_values = NestedArray::getValue($form_state->getValues(), $remove_form['#parents']);
@@ -405,13 +405,15 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   }
 
   /**
+   * Build all necessary things for child form (form state, etc.).
+   *
    * @param $entity_form
    * @param $form_state
    * @param \Drupal\Core\Entity\EntityInterface $entity
    * @param $operation
    * @return array
    */
-  protected function buildChildFormState(&$entity_form, FormStateInterface &$form_state, EntityInterface $entity, $operation) {
+  protected function buildChildFormState(&$entity_form, FormStateInterface $form_state, EntityInterface $entity, $operation) {
     $child_form_state = new FormState();
     $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);

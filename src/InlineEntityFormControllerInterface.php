@@ -55,10 +55,10 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * Modules can alter the output of this method through
    * hook_inline_entity_form_table_fields_alter().
    *
-   * @param $bundles
+   * @param array $bundles
    *   An array of allowed bundles for this widget.
    *
-   * @return
+   * @return array
    *   An array of field information, keyed by field name. Allowed keys:
    *   - type: 'field' or 'property',
    *   - label: Human readable name of the field, shown to the user.
@@ -73,10 +73,10 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
   /**
    * Returns a setting value.
    *
-   * @param $name
+   * @param string $name
    *   The name of the setting value to return.
    *
-   * @return
+   * @return mixed
    *   A setting value.
    */
   public function getSetting($name);
@@ -97,22 +97,22 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * leading to possible key collisions if the keys are not prefixed with
    * $entity_form['#parents'].
    *
-   * @param $entity_form
+   * @param array $entity_form
    *   The entity form.
-   * @param $form_state
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function entityForm($entity_form, FormStateInterface &$form_state);
+  public function entityForm($entity_form, FormStateInterface $form_state);
 
   /**
    * Validates the entity form.
    *
-   * @param $entity_form
+   * @param array $entity_form
    *   The entity form.
-   * @param $form_state
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function entityFormValidate($entity_form, FormStateInterface &$form_state);
+  public function entityFormValidate($entity_form, FormStateInterface $form_state);
 
   /**
    * Handles the submission of an entity form.
@@ -121,41 +121,41 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    * the values from the form to matching properties and, if the entity is
    * fieldable, invoking Field API submit.
    *
-   * @param $entity_form
+   * @param array $entity_form
    *   The entity form.
-   * @param $form_state
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state);
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state);
 
   /**
    * Returns the remove form to be shown through the IEF widget.
    *
-   * @param $remove_form
-   *   The remove form.
-   * @param $form_state
+   * @param array $entity_form
+   *   The entity form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function removeForm($remove_form, FormStateInterface &$form_state);
+  public function removeForm($remove_form, FormStateInterface $form_state);
 
   /**
    * Handles the submission of a remove form.
    * Decides what should happen to the entity after the removal confirmation.
    *
-   * @param $remove_form
-   *   The remove form.
-   * @param $form_state
+   * @param array $entity_form
+   *   The entity form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    *
-   * @return
+   * @return int
    *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
    */
-  public function removeFormSubmit($remove_form, FormStateInterface &$form_state);
+  public function removeFormSubmit($remove_form, FormStateInterface $form_state);
 
   /**
    * Permanently saves the given entity.
    *
-   * @param $entity
+   * @param \Drupal\Core\Entity\EntityInterface $entity
    *   The entity to save.
    * @param array $context
    *   Available keys:
@@ -167,7 +167,7 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
   /**
    * Delete permanently saved entities.
    *
-   * @param $ids
+   * @param int[] $ids
    *   An array of entity IDs.
    * @param array $context
    *   Available keys:

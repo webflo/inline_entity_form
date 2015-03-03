@@ -154,7 +154,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   /**
    * {@inheritdoc}
    */
-  public function entityForm($entity_form, FormStateInterface &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     global $user;
 
     // Get the labels (product / variation).
@@ -267,7 +267,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   /**
    * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, FormStateInterface &$form_state) {
+  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
     $product = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);
@@ -295,7 +295,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $product = $entity_form['#entity'];
