@@ -20,8 +20,9 @@ use Drupal\Core\Entity\EntityManagerInterface;
 /**
  * Generic entity inline form.
  *
- * @Plugin(
+ * @InlineEntityFormController(
  *   id = "entity",
+ *   label = "Entity inline form",
  *   deriver = "Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm",
  * )
  *

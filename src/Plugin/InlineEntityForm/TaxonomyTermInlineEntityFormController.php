@@ -1,8 +1,7 @@
 <?php
 
 /**
- * @file
- * Defines the inline entity form controller for Taxonomy terms.
+ * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\TaxonomyTermInlineEntityFormController.
  */
 
 namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
@@ -10,6 +9,14 @@ namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 
+/**
+ * Taxonomy term inline form controller.
+ *
+ * @InlineEntityFormController(
+ *   id = "entity:taxonomy_term",
+ *   label = "Taxonomy term inline form",
+ * )
+ */
 class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormController {
 
   /**

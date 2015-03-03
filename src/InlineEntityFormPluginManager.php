@@ -31,7 +31,7 @@ class InlineEntityFormPluginManager extends DefaultPluginManager {
    *   The 'field type' plugin manager.
    */
   public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, LanguageManager $language_manager, ModuleHandlerInterface $module_handler) {
-    parent::__construct('Plugin/InlineEntityForm', $namespaces, $module_handler, 'Drupal\inline_entity_form\InlineEntityFormControllerInterface');
+    parent::__construct('Plugin/InlineEntityForm', $namespaces, $module_handler, 'Drupal\inline_entity_form\InlineEntityFormControllerInterface', 'Drupal\inline_entity_form\Annotation\InlineEntityFormController');
 
     $this->setCacheBackend($cache_backend, 'inline_entity_form_plugins');
     $this->alterInfo('inline_entity_form_controller_info');

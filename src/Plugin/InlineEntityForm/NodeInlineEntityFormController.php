@@ -14,10 +14,11 @@ use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Node.
+ * Node inline form controller.
  *
- * @Plugin(
- *   id = "entity:node"
+ * @InlineEntityFormController(
+ *   id = "entity:node",
+ *   label = "Node inline form",
  * )
  */
 class NodeInlineEntityFormController extends EntityInlineEntityFormController {
