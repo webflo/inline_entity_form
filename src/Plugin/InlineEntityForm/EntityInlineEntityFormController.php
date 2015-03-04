@@ -206,13 +206,23 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function entityForm($entity_form, FormStateInterface $form_state) {
-    /** @var \Drupal\Core\Entity\EntityInterface $entity */
-    $entity = $entity_form['#entity'];
-    $operation = 'default';
+    // Assume create form if nothing defined.
+    if (empty($entity_form['#op'])) {
+      $entity_form['#op'] = 'add';
+    }
 
-    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
-    $controller->setEntity($entity);
-    $child_form_state = $this->buildChildFormState($controller, $form_state, $entity, $operation);
+    if (empty($entity_form['#entity'])) {
+      $entity_form['#entity'] = $this->createEntity($entity_form, $form_state);
+    }
+
+    if ($entity_form['#op'] == 'add') {
+      $entity_form['#title'] = t('Add new @type_singular', array('@type_singular' => $this->labels()['singular']));
+    }
+
+    $operation = 'default';
+    $controller = $this->entityManager->getFormObject($entity_form['#entity']->getEntityTypeId(), $operation);
+    $controller->setEntity($entity_form['#entity']);
+    $child_form_state = $this->buildChildFormState($controller, $form_state, $entity_form['#entity'], $operation);
 
     $entity_form['#ief_parents'] = $entity_form['#parents'];
 
@@ -463,6 +473,40 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
         'inline_entity_form_close_row_form',
         'inline_entity_form_cleanup_row_form_state',
       ];
+    }
+  }
+
+  /**
+   * "Creates" entity that is being edited/created in inline form.
+   *
+   * Entity will either be created (when creating) or loaded form form state
+   * (when editing).
+   *
+   * @param $form
+   *   Form structure array.
+   * @param FormStateInterface $form_state
+   *   Form state object.
+   *
+   * @return \Drupal\Core\Entity\EntityInterface
+   *   Created entity object.
+   */
+  protected function createEntity($form, FormStateInterface $form_state) {
+    if ($form['#op'] == 'add') {
+      // Create a new entity that will be passed to the form.
+      $ief_settings = $form_state->get(['inline_entity_form', $form['#ief_id']]);
+      if (isset($ief_settings['form settings']['bundle'])) {
+        $bundle = $ief_settings['form settings']['bundle'];
+      }
+      if (empty($bundle) && isset($ief_settings['bundle'])) {
+        $bundle = $ief_settings['bundle'];
+      }
+      if (empty($bundle)) {
+        $bundle = reset($ief_settings['settings']['handler_settings']['target_bundles']);
+      }
+      return inline_entity_form_create_entity($form['#entity_type'], $bundle, $form['#parent_language']);
+    }
+    else {
+      return $form_state->get(['inline_entity_form', $form['#ief_id'], 'entities', $form['#ief_row_delta'], 'entity']);
     }
   }
 }
