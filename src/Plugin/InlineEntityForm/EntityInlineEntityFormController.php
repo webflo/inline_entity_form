@@ -370,13 +370,12 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $labels = $this->labels();
     // Build a delta suffix that's appended to button #name keys for uniqueness.
     $delta = $form['#ief_id'];
-    $save_label = '';
-    if ($form['#op'] == 'edit') {
+    if ($form['#op'] == 'add') {
+      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+    else {
       $delta .= '-' . $form['#ief_row_delta'];
       $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
-    }
-    elseif ($form['#op'] == 'add') {
-      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
     }
 
     $form['actions'] = [
