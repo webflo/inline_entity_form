@@ -249,39 +249,6 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   }
 
   /**
-   * Cleans up the form state for each field.
-   *
-   * After field_attach_submit() has run and the entity has been saved, the form
-   * state still contains field data in $form_state['field']. Unless that
-   * data is removed, the next form with the same #parents (reopened add form,
-   * for example) will contain data (i.e. uploaded files) from the previous form.
-   *
-   * @param $entity_form
-   *   The entity form.
-   * @param $form_state
-   *   The form state of the parent form.
-   */
-  protected function cleanupFieldFormState($entity_form, FormStateInterface &$form_state) {
-    $bundle = $entity_form['#entity']->bundle();
-    /**
-     * @var \Drupal\field\Entity\FieldInstanceConfig[] $instances
-     */
-    $instances = field_info_instances($entity_form['#entity_type'], $bundle);
-    foreach ($instances as $instance) {
-      $field_name = $instance->getFieldName();
-      if (isset($entity_form[$field_name])) {
-        $parents = $entity_form[$field_name]['#parents'];
-
-        $field_state = WidgetBase::getWidgetState($parents, $field_name, $form_state);
-        unset($field_state['items']);
-        unset($field_state['entity']);
-        $field_state['items_count'] = 0;
-        WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
-      }
-    }
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function removeForm($remove_form, FormStateInterface $form_state) {
