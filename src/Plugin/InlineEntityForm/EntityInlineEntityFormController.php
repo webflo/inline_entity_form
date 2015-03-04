@@ -209,6 +209,9 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     }
 
     $form_state->set('field', $child_form_state->get('field'));
+
+    $this->buildFormActions($entity_form);
+
     return $entity_form;
   }
 
@@ -357,4 +360,49 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     return $child_form_state;
   }
 
+  /**
+   * Adds actions to the inline entity form.
+   *
+   * @param array $form
+   *   Form array structure.
+   */
+  protected function buildFormActions(&$form) {
+    $labels = $this->labels();
+    // Build a delta suffix that's appended to button #name keys for uniqueness.
+    $delta = $form['#ief_id'];
+    $save_label = '';
+    if ($form['#op'] == 'edit') {
+      $delta .= '-' . $form['#ief_row_delta'];
+      $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+    elseif ($form['#op'] == 'add') {
+      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+
+    $form['actions'] = [
+      '#type' => 'container',
+      '#weight' => 100,
+    ];
+    $form['actions']['ief_' . $form['#op'] . '_save'] = [
+      '#type' => 'submit',
+      '#value' => $save_label,
+      '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
+      '#limit_validation_errors' => [$form['#parents']],
+      '#attributes' => ['class' => ['ief-entity-submit']],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+    ];
+    $entity_form['actions']['ief_' . $entity_form['#op'] . '_cancel'] = [
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
+      '#limit_validation_errors' => [],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+    ];
+  }
 }
