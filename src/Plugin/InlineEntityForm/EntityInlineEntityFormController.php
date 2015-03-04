@@ -193,9 +193,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function entityForm($entity_form, FormStateInterface $form_state) {
-    /**
-     * @var \Drupal\Core\Entity\EntityInterface $entity
-     */
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
@@ -230,9 +228,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
-    /**
-     * @var \Drupal\Core\Entity\EntityInterface $entity
-     */
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
