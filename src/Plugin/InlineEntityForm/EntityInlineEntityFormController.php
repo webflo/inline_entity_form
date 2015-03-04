@@ -237,7 +237,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $this->buildFormActions($entity_form);
     $this->addSubmitHandlers($entity_form);
 
-    $entity_form['#element_validate'][] = 'inline_entity_form_entity_form_validate';
+    $entity_form['#element_validate'][] = [$this, 'entityFormValidate'];
     $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
     // Add the pre_render callback that powers the #fieldset form element key,
     // which moves the element to the specified fieldset without modifying its
@@ -259,6 +259,19 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $entity = $entity_form['#entity'];
     $form_state['form_display']->validateFormValues($entity, $entity_form, $form_state);
     */
+
+    // Unset untriggered conditional fields errors
+    $errors = $form_state->getErrors();
+    $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
+    if ($errors && !empty($conditional_fields_untriggered_dependents)) {
+      foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
+        if (!empty($untriggered_dependents['errors'])) {
+          foreach (array_keys($untriggered_dependents['errors']) as $key) {
+            unset($errors[$key]);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -428,7 +441,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
         'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
       ],
     ];
-    $entity_form['actions']['ief_' . $entity_form['#op'] . '_cancel'] = [
+    $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
       '#type' => 'submit',
       '#value' => t('Cancel'),
       '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
@@ -508,5 +521,9 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     else {
       return $form_state->get(['inline_entity_form', $form['#ief_id'], 'entities', $form['#ief_row_delta'], 'entity']);
     }
+  }
+
+  public function __sleep() {
+    return [];
   }
 }
