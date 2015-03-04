@@ -441,7 +441,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
         'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
       ],
     ];
-    $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
+    $entity_form['actions']['ief_' . $entity_form['#op'] . '_cancel'] = [
       '#type' => 'submit',
       '#value' => t('Cancel'),
       '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
