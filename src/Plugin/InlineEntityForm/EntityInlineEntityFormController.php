@@ -9,6 +9,7 @@ namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
@@ -45,6 +46,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   protected $entityManager;
 
   /**
+   * Module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
    * Constructs the inline entity form controller.
    *
    * @param array $configuration
@@ -53,12 +61,17 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    *   The plugin_id for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
+   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
+   *   Entity manager service.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   Module handler service.
    */
-  public function __construct($configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager) {
+  public function __construct($configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     list(, $this->entityTypeId) = explode(':', $plugin_id, 2);
     $this->entityManager = $entity_manager;
+    $this->moduleHandler = $module_handler;
     $this->setConfiguration($configuration);
   }
 
@@ -70,7 +83,8 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('entity.manager')
+      $container->get('entity.manager'),
+      $container->get('module_handler')
     );
   }
 
@@ -211,6 +225,17 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     $form_state->set('field', $child_form_state->get('field'));
 
     $this->buildFormActions($entity_form);
+    $this->addSubmitHandlers($entity_form);
+
+    $entity_form['#element_validate'][] = 'inline_entity_form_entity_form_validate';
+    $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
+    // Add the pre_render callback that powers the #fieldset form element key,
+    // which moves the element to the specified fieldset without modifying its
+    // position in $form_state['values'].
+    $entity_form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
+
+    // Allow other modules to alter the form.
+    $this->moduleHandler->alter('inline_entity_form_entity_form', $entity_form, $form_state);
 
     return $entity_form;
   }
@@ -403,5 +428,41 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
         'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
       ],
     ];
+  }
+
+  /**
+   * Adds submit handlers to the inline entity form.
+   *
+   * @param array $form
+   *   Form array structure.
+   */
+  protected function addSubmitHandlers(&$form) {
+    if ($form['#op'] == 'add') {
+      $form['actions']['ief_add_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+      ];
+      $form['actions']['ief_add_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+        'inline_entity_form_cleanup_form_state',
+      ];
+    }
+    else {
+      $form['actions']['ief_edit_save']['#ief_row_delta'] = $form['#ief_row_delta'];
+      $form['actions']['ief_edit_cancel']['#ief_row_delta'] = $form['#ief_row_delta'];
+
+      $form['actions']['ief_edit_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+      ];
+      $form['actions']['ief_edit_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+        'inline_entity_form_cleanup_row_form_state',
+      ];
+    }
   }
 }
