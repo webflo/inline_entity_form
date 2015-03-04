@@ -312,6 +312,35 @@ function inline_entity_form_entity_form(InlineEntityFormControllerInterface $con
 }
 
 /**
+ * Validates an entity form.
+ *
+ * @param $entity_form
+ *  The form of the entity being managed inline.
+ * @param $form_state
+ *   The form state of the parent form.
+ */
+function inline_entity_form_entity_form_validate(&$entity_form, FormStateInterface $form_state) {
+  $ief_id = $entity_form['#ief_id'];
+  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
+  // Instantiate the controller and validate the form.
+  $controller = inline_entity_form_get_controller($instance);
+  $controller->entityFormValidate($entity_form, $form_state);
+
+  // Unset untriggered conditional fields errors
+  $errors = $form_state->getErrors();
+  $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
+  if ($errors && !empty($conditional_fields_untriggered_dependents)) {
+    foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
+      if (!empty($untriggered_dependents['errors'])) {
+        foreach (array_keys($untriggered_dependents['errors']) as $key) {
+          unset($errors[$key]);
+        }
+      }
+    }
+  }
+}
+
+/**
  * Submits an entity form.
  *
  * Note that at this point the entity is not yet saved, since the user might
