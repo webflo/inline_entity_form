@@ -494,13 +494,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
     if ($form['#op'] == 'add') {
       // Create a new entity that will be passed to the form.
       $ief_settings = $form_state->get(['inline_entity_form', $form['#ief_id']]);
-      if (isset($ief_settings['form settings']['bundle'])) {
+      if (!empty($ief_settings['form settings']['bundle'])) {
         $bundle = $ief_settings['form settings']['bundle'];
       }
-      if (empty($bundle) && isset($ief_settings['bundle'])) {
+      elseif (!empty($ief_settings['bundle'])) {
         $bundle = $ief_settings['bundle'];
       }
-      if (empty($bundle)) {
+      else {
         $bundle = reset($ief_settings['settings']['handler_settings']['target_bundles']);
       }
       return inline_entity_form_create_entity($form['#entity_type'], $bundle, $form['#parent_language']);
