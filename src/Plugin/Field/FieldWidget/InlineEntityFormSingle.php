@@ -148,4 +148,5 @@ class InlineEntityFormSingle extends WidgetBase {
 
     return $summary;
   }
+
 }

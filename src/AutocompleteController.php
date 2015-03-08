@@ -54,6 +54,11 @@ class AutocompleteController implements ContainerInjectionInterface {
     $storage = $field->getFieldStorageDefinition();
     $settings = $storage->getSettings();
     $controller = inline_entity_form_get_controller($field);
+    $widget = \Drupal::entityManager()
+      ->getStorage('entity_form_display')
+      ->load($entity_type_id . '.' . $bundle . '.default')
+      ->getComponent($field_name);
+
     // The current entity type is not supported, or the string is empty.
     // strlen() is used instead of empty() since '0' is a valid value.
     if (!$field || !$storage || !$controller || !strlen($string)) {
@@ -62,7 +67,7 @@ class AutocompleteController implements ContainerInjectionInterface {
 
     $results = array();
     if ($field->getType() == 'commerce_product_reference') {
-      $match_operator = strtolower($controller->getSetting('match_operator'));
+      $match_operator = strtolower($widget['settings']['match_operator']);
       $products = commerce_product_match_products($field, $storage, $string, $match_operator, array(), 10, TRUE);
 
       // Loop through the products and convert them into autocomplete output.
@@ -75,7 +80,7 @@ class AutocompleteController implements ContainerInjectionInterface {
       $selection_manager = \Drupal::service('plugin.manager.entity_reference.selection');
       /** @var \Drupal\entity_reference\Plugin\Type\Selection\SelectionInterface $handler */
       $handler = $selection_manager->getSelectionHandler($field);
-      $entity_labels = $handler->getReferenceableEntities($string, $controller->getSetting('match_operator'), 10);
+      $entity_labels = $handler->getReferenceableEntities($string, $widget['settings']['match_operator'], 10);
 
       foreach ($entity_labels as $bundle => $labels) {
         // Loop through each entity type, and autocomplete with its titles.

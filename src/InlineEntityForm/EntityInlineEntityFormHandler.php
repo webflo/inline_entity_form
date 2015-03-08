@@ -6,7 +6,6 @@
 
 namespace Drupal\inline_entity_form\InlineEntityForm;
 
-use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\WidgetBase;
@@ -29,11 +28,11 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
   protected $entityManager;
 
   /**
-   * Handler configuration.
+   * ID of entity type managed by this handler
    *
-   * @var array
+   * @var string
    */
-  protected $configuration;
+  protected $entityTypeId;
 
   /**
    * Constructs the inline entity form controller.
@@ -69,21 +68,10 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
    * {@inheritdoc}
    */
   public function labels() {
-    // The admin has specified the exact labels that should be used.
-    if ($this->configuration['override_labels']) {
-      $labels = [
-        'singular' => $this->configuration['label_singular'],
-        'plural' => $this->configuration['label_plural'],
-      ];
-    }
-    else {
-      $labels = [
-        'singular' => t('entity'),
-        'plural' => t('entities'),
-      ];
-    }
-
-    return $labels;
+    return [
+      'singular' => t('entity'),
+      'plural' => t('entities'),
+    ];
   }
 
   /**
@@ -125,51 +113,15 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
-    return [
-      'allow_existing' => FALSE,
-      'match_operator' => 'CONTAINS',
-      'delete_references' => FALSE,
-      'override_labels' => FALSE,
-      'label_singular' => '',
-      'label_plural' => '',
-      'entity type' => '',
-    ];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getConfiguration() {
-    return $this->configuration;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setConfiguration(array $configuration) {
-    $this->configuration = $configuration + $this->defaultConfiguration();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function calculateDependencies() {
-    return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getSetting($name) {
-    return $this->configuration[$name];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function entityTypeId() {
-    return $this->configuration['entity type'];
+    return $this->entityTypeId;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEntityTypeId($entity_type_id) {
+    $this->entityTypeId = $entity_type_id;
   }
 
   /**
@@ -195,7 +147,7 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
     $child_form_state->setValues($form_state->getValues());
     $child_form_state->setStorage($form_state->getStorage());
 
-    $child_form_state->set('form_display', entity_load('entity_form_display', $entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation));
+    $child_form_state->set('form_display', $this->entityManager->getStorage('entity_form_display')->load($entity->getEntityTypeId() . '.' . $entity->bundle() . '.' . $operation));
 
     // Since some of the submit handlers are run, redirects need to be disabled.
     $child_form_state->set('no_redirect', TRUE);
@@ -328,51 +280,6 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
         WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
       }
     }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function removeForm($remove_form, FormStateInterface $form_state) {
-    $entity = $remove_form['#entity'];
-    $entity_id = $entity->id();
-    $entity_label = $entity->label();
-
-    $remove_form['message'] = array(
-      '#markup' => '<div>' . t('Are you sure you want to remove %label?', array('%label' => $entity_label)) . '</div>',
-    );
-    if (!empty($entity_id) && $this->getSetting('allow_existing')) {
-      $access = $entity->access('delete');
-      if ($access) {
-        $labels = $this->labels();
-        $remove_form['delete'] = array(
-          '#type' => 'checkbox',
-          '#title' => t('Delete this @type_singular from the system.', array('@type_singular' => $labels['singular'])),
-        );
-      }
-    }
-
-    return $remove_form;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function removeFormSubmit($remove_form, FormStateInterface $form_state) {
-    $entity = $remove_form['#entity'];
-    $entity_id = $entity->id();
-    $form_values = NestedArray::getValue($form_state->getValues(), $remove_form['#parents']);
-    // This entity hasn't been saved yet, we can just unlink it.
-    if (empty($entity_id)) {
-      return IEF_ENTITY_UNLINK;
-    }
-    // If existing entities can be referenced, the delete happens only when
-    // specifically requested (the "Permanently delete" checkbox).
-    if ($this->getSetting('allow_existing') && empty($form_values['delete'])) {
-      return IEF_ENTITY_UNLINK;
-    }
-
-    return IEF_ENTITY_UNLINK_DELETE;
   }
 
   /**
