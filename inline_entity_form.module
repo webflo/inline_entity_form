@@ -13,7 +13,6 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -36,7 +35,6 @@ define('IEF_ENTITY_UNLINK_DELETE', 2);
  */
 function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
   $field = $instance->getFieldStorageDefinition();
-  $instance_settings = $instance->getSettings();
   $field_settings = $field->getSettings();
 
   $form_display = entity_get_form_display($instance->entity_type, $instance->bundle, 'default');
@@ -47,19 +45,6 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
   $handler->setConfiguration($widget_settings + ['entity type' => $field_settings['target_type']]);
 
   return $handler;
-
-  /*
-  $field = field_info_field($instance['field_name']);
-  $type_settings = $instance['widget']['settings']['type_settings'];
-  $ief_settings = inline_entity_form_settings($field, $instance);
-  $entity_info = \Drupal::entityManager()->getDefinition($ief_settings['entity_type']);
-  // The current entity type is not supported, execution can't continue.
-  if (!isset($entity_info['inline entity form'])) {
-    return FALSE;
-  }
-
-  return new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
-  */
 }
 
 /**
@@ -285,24 +270,6 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
   foreach (element_children($element['entities']) as $key) {
     $form_state->set(['inline_entity_form', $ief_id, 'entities', $key, '_weight'], $element['entities'][$key]['delta']['#value']);
   }
-}
-
-/**
- * Wraps and returns the entity form provided by the passed-in controller.
- *
- * @param \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler
- *   The inline entity form handler.
- * @param array $entity_form
- *   The form array that will receive the entity form.
- * @param \Drupal\Core\Form\FormStateInterface $form_state
- *   The form state of the parent form.
- *
- * @return
- *   The form array containing the embedded entity form.
- */
-function inline_entity_form_entity_form(InlineEntityFormHandlerInterface $handler, $entity_form, FormStateInterface $form_state) {
-  // @TODO - can be removed entirely?
-  return $handler->entityForm($entity_form, $form_state);
 }
 
 /**
