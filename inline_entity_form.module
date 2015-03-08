@@ -13,7 +13,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
+use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -43,7 +43,7 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
   $widget_settings = $form_display->getComponent($field->getName())['settings'];
 
   /** @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler */
-  $handler = \Drupal::entityManager()->getFormObject($field_settings['target_type'], 'inline entity form');
+  $handler = \Drupal::entityManager()->getHandler($field_settings['target_type'], 'inline entity form');
   $handler->setConfiguration($widget_settings + ['entity type' => $field_settings['target_type']]);
 
   return $handler;
@@ -69,13 +69,13 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
  */
 function inline_entity_form_entity_type_build(array &$entity_types) {
   /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
-  if (!$entity_types['node']->getFormClass('inline entity form')) {
-    $entity_types['node']->setFormClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
+  if (!$entity_types['node']->getHandlerClass('inline entity form')) {
+    $entity_types['node']->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
   }
 
   foreach ($entity_types as &$entity_type) {
-    if (!$entity_type->getFormClass('inline entity form')) {
-      $entity_type->setFormClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler');
+    if (!$entity_type->getHandlerClass('inline entity form')) {
+      $entity_type->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler');
     }
   }
 }
@@ -290,7 +290,7 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
 /**
  * Wraps and returns the entity form provided by the passed-in controller.
  *
- * @param \Drupal\inline_entity_form\InlineEntityFormControllerInterface $controller
+ * @param \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler
  *   The inline entity form controller.
  * @param array $entity_form
  *   The form array that will receive the entity form.
@@ -300,9 +300,9 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
  * @return
  *   The form array containing the embedded entity form.
  */
-function inline_entity_form_entity_form(InlineEntityFormControllerInterface $controller, $entity_form, FormStateInterface $form_state) {
+function inline_entity_form_entity_form(InlineEntityFormHandlerInterface $handler, $entity_form, FormStateInterface $form_state) {
   // @TODO - can be removed entirely?
-  return $controller->entityForm($entity_form, $form_state);
+  return $handler->entityForm($entity_form, $form_state);
 }
 
 /**

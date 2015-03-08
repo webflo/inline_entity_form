@@ -6,6 +6,7 @@
  */
 
 namespace Drupal\inline_entity_form\InlineEntityForm;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Commerce line item inline entity form handler.
@@ -137,7 +138,7 @@ class CommerceLineItemInlineEntityFormHandler extends EntityInlineEntityFormHand
    *
    * @todo Remove once Commerce gets a quantity #element_validate function.
    */
-  public function entityFormValidate($entity_form, &$form_state) {
+  public static function entityFormValidate($entity_form, FormStateInterface $form_state) {
     $line_item = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);

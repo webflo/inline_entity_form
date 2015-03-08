@@ -272,7 +272,7 @@ class CommerceProductInlineEntityFormHandler extends EntityInlineEntityFormHandl
   /**
    * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
+  public static function entityFormValidate($entity_form, FormStateInterface $form_state) {
     $product = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);

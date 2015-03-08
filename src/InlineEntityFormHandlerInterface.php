@@ -8,13 +8,14 @@
 namespace Drupal\inline_entity_form;
 
 use Drupal\Component\Plugin\ConfigurablePluginInterface;
+use Drupal\Core\Entity\EntityHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Defines the interface for entity browser widgets.
  */
-interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface {
+interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface, EntityHandlerInterface {
 
   /**
    * Returns an array of libraries for the current entity type, keyed by theme
@@ -112,7 +113,7 @@ interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function entityFormValidate($entity_form, FormStateInterface $form_state);
+  public static function entityFormValidate($entity_form, FormStateInterface $form_state);
 
   /**
    * Handles the submission of an entity form.
