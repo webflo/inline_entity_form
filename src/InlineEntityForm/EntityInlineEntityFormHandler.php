@@ -1,118 +1,96 @@
 <?php
 
 /**
- * @file
- * Defines the base inline entity form controller.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler.
  */
 
-namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+namespace Drupal\inline_entity_form\InlineEntityForm;
 
 use Drupal\Component\Utility\NestedArray;
-use Drupal;
+use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
+use Drupal\Core\Entity\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Generic entity inline form.
- *
- * @Plugin(
- *   id = "entity",
- *   deriver = "Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm",
- * )
- *
- * @see \Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm
+ * Generic entity inline form handler.
  */
-class EntityInlineEntityFormController {
+class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFormHandlerInterface {
 
-  protected $entityType;
-  public $settings;
+  /**
+   * Entity manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityManagerInterface
+   */
+  protected $entityManager;
 
-  public function __construct($configuration, $plugin_id, $plugin_definition) {
-    list(, $this->entityType) = explode(':', $plugin_id, 2);
-    $this->settings = $configuration + $this->defaultSettings();
+  /**
+   * Handler configuration.
+   *
+   * @var array
+   */
+  protected $configuration;
+
+  /**
+   * Constructs the inline entity form controller.
+   *
+   * @param array $configuration
+   *   A configuration array containing information about the plugin instance.
+   * @param string $plugin_id
+   *   The plugin_id for the plugin instance.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   */
+  public function __construct(EntityManagerInterface $entity_manager) {
+    $this->entityManager = $entity_manager;
   }
 
   /**
-   * Returns an array of css filepaths for the current entity type, keyed
-   * by theme name.
-   *
-   * If provided, the "base" CSS file is included for all themes.
-   * If a CSS file matching the current theme exists, it will also be included.
-   *
-   * @code
-   * return array(
-   *   'base' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.base.css',
-   *   'seven' => drupal_get_path('module', 'test_module') . '/css/inline_entity_form.seven.css',
-   * );
-   * @endcode
+   * {@inheritdoc}
    */
-  public function css() {
-    return array();
-  }
-
-  /**
-   * Returns an array of entity type labels (singular, plural) fit to be
-   * included in the UI text.
-   */
-  public function defaultLabels() {
-    $labels = array(
-      'singular' => t('entity'),
-      'plural' => t('entities'),
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('entity.manager')
     );
-
-    return $labels;
-
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
-    // Commerce and its contribs declare permission labels that can be used
-    // for more precise and user-friendly strings.
-    if (!empty($info['permission labels'])) {
-      $labels = $info['permission labels'];
-    }
-
-    return $labels;
   }
 
-  public function labels() {
-    $labels = $this->defaultLabels();
+  /**
+   * {@inheritdoc}
+   */
+  public function libraries() {
+    return [];
+  }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function labels() {
     // The admin has specified the exact labels that should be used.
-    if ($this->settings['override_labels']) {
-      $labels = array(
-        'singular' => $this->settings['label_singular'],
-        'plural' => $this->settings['label_plural'],
-      );
+    if ($this->configuration['override_labels']) {
+      $labels = [
+        'singular' => $this->configuration['label_singular'],
+        'plural' => $this->configuration['label_plural'],
+      ];
+    }
+    else {
+      $labels = [
+        'singular' => t('entity'),
+        'plural' => t('entities'),
+      ];
     }
 
     return $labels;
   }
 
   /**
-   * Returns an array of fields used to represent an entity in the IEF table.
-   *
-   * The fields can be either Field API fields or properties defined through
-   * hook_entity_property_info().
-   *
-   * Modules can alter the output of this method through
-   * hook_inline_entity_form_table_fields_alter().
-   *
-   * @param $bundles
-   *   An array of allowed bundles for this widget.
-   *
-   * @return
-   *   An array of field information, keyed by field name. Allowed keys:
-   *   - type: 'field' or 'property',
-   *   - label: Human readable name of the field, shown to the user.
-   *   - weight: The position of the field relative to other fields.
-   *   Special keys for type 'field', all optional:
-   *   - formatter: The formatter used to display the field, or "hidden".
-   *   - settings: An array passed to the formatter. If empty, defaults are used.
-   *   - delta: If provided, limits the field to just the specified delta.
+   * {@inheritdoc}
    */
   public function tableFields($bundles) {
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
-    // $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityTypeId());
     $metadata = array();
 
     $fields = array();
@@ -145,55 +123,57 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Returns a setting value.
-   *
-   * @param $name
-   *   The name of the setting value to return.
-   *
-   * @return
-   *   A setting value.
+   * {@inheritdoc}
+   */
+  public function defaultConfiguration() {
+    return [
+      'allow_existing' => FALSE,
+      'match_operator' => 'CONTAINS',
+      'delete_references' => FALSE,
+      'override_labels' => FALSE,
+      'label_singular' => '',
+      'label_plural' => '',
+      'entity type' => '',
+    ];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConfiguration() {
+    return $this->configuration;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setConfiguration(array $configuration) {
+    $this->configuration = $configuration + $this->defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function getSetting($name) {
-    return $this->settings[$name];
+    return $this->configuration[$name];
   }
 
   /**
-   * Returns an array of default settings in the form of key => value.
+   * {@inheritdoc}
    */
-  public function defaultSettings() {
-    $defaults = array();
-    $defaults['allow_existing'] = FALSE;
-    $defaults['match_operator'] = 'CONTAINS';
-    $defaults['delete_references'] = FALSE;
-    $defaults['override_labels'] = FALSE;
-    $defaults['label_singular'] = '';
-    $defaults['label_plural'] = '';
-
-    return $defaults;
+  public function entityTypeId() {
+    return $this->configuration['entity type'];
   }
 
   /**
-   * Returns the entity type managed by this controller.
-   *
-   * @return
-   *   The entity type.
-   */
-  public function entityType() {
-    return $this->entityType;
-  }
-
-  /**
-   * Returns the entity form to be shown through the IEF widget.
-   *
-   * When adding data to $form_state it should be noted that there can be
-   * several IEF widgets on one master form, each with several form rows,
-   * leading to possible key collisions if the keys are not prefixed with
-   * $entity_form['#parents'].
-   *
-   * @param $entity_form
-   *   The entity form.
-   * @param $form_state
-   *   The form state of the parent form.
+   * {@inheritdoc}
    */
   public function entityForm($entity_form, FormStateInterface $form_state) {
     /**
@@ -202,8 +182,8 @@ class EntityInlineEntityFormController {
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $child_form_state = new Drupal\Core\Form\FormState();
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $child_form_state = new FormState();
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
     $child_form_state->addBuildInfo('callback_object', $controller);
     $child_form_state->addBuildInfo('base_form_id', $controller->getBaseFormID());
@@ -248,14 +228,9 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Validates the entity form.
-   *
-   * @param $entity_form
-   *   The entity form.
-   * @param $form_state
-   *   The form state of the parent form.
+   * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, &$form_state) {
+  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
     /*
     $info = \Drupal::entityManager()->getDefinition($this->entityType);
     $entity = $entity_form['#entity'];
@@ -264,16 +239,7 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Handles the submission of an entity form.
-   *
-   * Prepares the entity stored in $entity_form['#entity'] for saving by copying
-   * the values from the form to matching properties and, if the entity is
-   * fieldable, invoking Field API submit.
-   *
-   * @param $entity_form
-   *   The entity form.
-   * @param $form_state
-   *   The form state of the parent form.
+   * {@inheritdoc}
    */
   public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     /**
@@ -287,7 +253,7 @@ class EntityInlineEntityFormController {
     $child_form_state = new FormState();
 //    $child_form_state->set('values', NestedArray::getValue($form_state['values'], $entity_form['#parents']));
 
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state->addBuildInfo('callback_object', $controller);
@@ -344,7 +310,7 @@ class EntityInlineEntityFormController {
    * @param $form_state
    *   The form state of the parent form.
    */
-  protected function cleanupFieldFormState($entity_form, &$form_state) {
+  protected function cleanupFieldFormState($entity_form, FormStateInterface &$form_state) {
     $bundle = $entity_form['#entity']->bundle();
     /**
      * @var \Drupal\field\Entity\FieldInstanceConfig[] $instances
@@ -365,14 +331,9 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Returns the remove form to be shown through the IEF widget.
-   *
-   * @param $remove_form
-   *   The remove form.
-   * @param $form_state
-   *   The form state of the parent form.
+   * {@inheritdoc}
    */
-  public function removeForm($remove_form, &$form_state) {
+  public function removeForm($remove_form, FormStateInterface $form_state) {
     $entity = $remove_form['#entity'];
     $entity_id = $entity->id();
     $entity_label = $entity->label();
@@ -395,16 +356,7 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Handles the submission of a remove form.
-   * Decides what should happen to the entity after the removal confirmation.
-   *
-   * @param $remove_form
-   *   The remove form.
-   * @param $form_state
-   *   The form state of the parent form.
-   *
-   * @return
-   *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
+   * {@inheritdoc}
    */
   public function removeFormSubmit($remove_form, FormStateInterface $form_state) {
     $entity = $remove_form['#entity'];
@@ -424,43 +376,24 @@ class EntityInlineEntityFormController {
   }
 
   /**
-   * Permanently saves the given entity.
-   *
-   * @param $entity
-   *   The entity to save.
-   * @param array $context
-   *   Available keys:
-   *   - parent_entity_type: The type of the parent entity.
-   *   - parent_entity: The parent entity.
-   */
-  public function save(EntityInterface $entity, $context) {
-    return $entity->save();
-  }
-
-  /**
-   * Delete permanently saved entities.
-   *
-   * @param $ids
-   *   An array of entity IDs.
-   * @param array $context
-   *   Available keys:
-   *   - parent_entity_type: The type of the parent entity.
-   *   - parent_entity: The parent entity.
+   * {@inheritdoc}
    */
   public function delete($ids, $context) {
-    entity_delete_multiple($this->entityType, $ids);
+    entity_delete_multiple($this->entityTypeId(), $ids);
   }
 
   /**
+   * Build all necessary things for child form (form state, etc.).
+   *
    * @param $entity_form
    * @param $form_state
-   * @param $entity
+   * @param \Drupal\Core\Entity\EntityInterface $entity
    * @param $operation
    * @return array
    */
-  protected function buildChildFormState(&$entity_form, &$form_state, $entity, $operation) {
+  protected function buildChildFormState(&$entity_form, FormStateInterface $form_state, EntityInterface $entity, $operation) {
     $child_form_state = new FormState();
-    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
 
     $child_form_state->addBuildInfo('callback_object', $controller);
@@ -495,4 +428,5 @@ class EntityInlineEntityFormController {
     $this->child_form_state = $child_form_state;
     $this->child_form_controller = $controller;
   }
+
 }

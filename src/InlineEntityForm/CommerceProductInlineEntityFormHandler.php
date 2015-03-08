@@ -1,29 +1,38 @@
 <?php
 
 /**
- * @file
- * Defines the inline entity form controller for Commerce Products.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\CommerceProductInlineEntityFormHandler.
  */
 
-class CommerceProductInlineEntityFormController extends EntityInlineEntityFormController {
+namespace Drupal\inline_entity_form\InlineEntityForm;
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Commerce product inline entity form handler.
+ *
+ * @TODO - this needs to be ported. Not in a working state ATM.
+ */
+class CommerceProductInlineEntityFormHandler extends EntityInlineEntityFormHandler {
 
   /**
-   * Overrides EntityInlineEntityFormController::css().
+   * {@inheritdoc}
    */
-  public function css() {
-    return array(
-      'base' => drupal_get_path('module', 'inline_entity_form') . '/theme/commerce-product.css',
-    );
+  public function libraries() {
+    return [
+      'base' => 'inline_entity_form/commerce_product.base',
+    ];
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::labels().
+   * {@inheritdoc}
    */
   public function labels() {
     $labels = parent::labels();
 
     // Override the strings.
-    if ($this->settings['use_variation_language']) {
+    if ($this->configuration['use_variation_language']) {
       $labels = array(
         'singular' => t('variation'),
         'plural' => t('variations'),
@@ -34,7 +43,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::tableFields().
+   * {@inheritdoc}
    */
   public function tableFields($bundles) {
     $fields = array();
@@ -116,10 +125,10 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::defaultSettings().
+   * {@inheritdoc}
    */
-  public function defaultSettings() {
-    $defaults = parent::defaultSettings();
+  public function defaultConfiuration() {
+    $defaults = parent::defaultConfiguration();
     $defaults['autogenerate_title'] = TRUE;
     $defaults['use_variation_language'] = FALSE;
 
@@ -127,7 +136,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::settingsForm().
+   * Overrides EntityInlineEntityFormHandler::settingsForm().
    */
   public function settingsForm($field, $instance) {
     $form = parent::settingsForm($field, $instance);
@@ -148,9 +157,9 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityForm().
+   * {@inheritdoc}
    */
-  public function entityForm($entity_form, &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     global $user;
 
     // Get the labels (product / variation).
@@ -261,9 +270,9 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityFormValidate().
+   * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, &$form_state) {
+  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
     $product = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);
@@ -289,9 +298,9 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityFormSubmit().
+   * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $product = $entity_form['#entity'];
@@ -345,11 +354,11 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::save().
+   * {@inheritdoc}
    *
-   * Autogenerates the product title if specified, and then saves the product.
+   * @TODO - this function no longer exists.
    */
-  public function save($entity, $context) {
+  public function save(EntityInterface $entity, $context) {
     // Remove the temporary message added in entityFormSubmit() so that
     // Commerce AutoSKU can do its thing.
     if (!empty($entity->_remove_sku)) {
@@ -381,7 +390,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::delete().
+   * Overrides EntityInlineEntityFormHandler::delete().
    *
    * Disables products that can't be deleted (because they are already
    * referenced from a line item, or for some other reason), deletes the rest.
