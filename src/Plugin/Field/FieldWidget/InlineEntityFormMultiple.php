@@ -206,11 +206,6 @@ class InlineEntityFormMultiple extends WidgetBase {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'settings'], $settings);
     }
 
-    // Initialize the IEF array in form state.
-    if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'settings'])) {
-      $form_state->set(['inline_entity_form', $this->getIefId(), 'settings'], $settings);
-    }
-
     if (!$form_state->has(['inline_entity_form', $this->getIefId(), 'instance'])) {
       $form_state->set(['inline_entity_form', $this->getIefId(), 'instance'], $this->fieldDefinition);
     }
