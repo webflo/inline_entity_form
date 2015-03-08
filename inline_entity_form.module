@@ -13,7 +13,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
+use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
 
 /**
  * Flag indicating that the entity should be unlinked.
@@ -290,8 +290,8 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
 /**
  * Wraps and returns the entity form provided by the passed-in controller.
  *
- * @param \Drupal\inline_entity_form\InlineEntityFormControllerInterface $controller
- *   The inline entity form controller.
+ * @param \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler
+ *   The inline entity form handler.
  * @param array $entity_form
  *   The form array that will receive the entity form.
  * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -300,9 +300,9 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
  * @return
  *   The form array containing the embedded entity form.
  */
-function inline_entity_form_entity_form(InlineEntityFormControllerInterface $controller, $entity_form, FormStateInterface $form_state) {
+function inline_entity_form_entity_form(InlineEntityFormHandlerInterface $handler, $entity_form, FormStateInterface $form_state) {
   // @TODO - can be removed entirely?
-  return $controller->entityForm($entity_form, $form_state);
+  return $handler->entityForm($entity_form, $form_state);
 }
 
 /**
