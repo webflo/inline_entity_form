@@ -39,7 +39,7 @@ class InlineEntityFormMultiple extends WidgetBase {
   /**
    * The inline entity from controller.
    *
-   * @var \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormController
+   * @var \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormHandler
    */
   protected $iefController;
 
@@ -557,18 +557,14 @@ class InlineEntityFormMultiple extends WidgetBase {
         });
       }
 
-      // @todo: remove the duplicate entity save.
       foreach ($values as $delta => &$item) {
+        /** @var \Drupal\Core\Entity\EntityInterface $entity */
+        $entity = $item['entity'];
         if (!empty($item['needs_save'])) {
-          // @todo That unset is no longer needed. Figure out whether removing
-          //   it, is the correct fix.
-          // if (!$item['entity']->id()) {
-          // unset($item['entity']->uuid);
-          // }
-          $this->iefController->save($item['entity'], array());
+          $entity->save();
         }
         if (!empty($item['delete'])) {
-          $item['entity']->delete();
+          $entity->delete();
           unset($items[$delta]);
         }
       }

@@ -1,15 +1,20 @@
 <?php
 
 /**
- * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\CommerceProductInlineEntityFormController.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\CommerceProductInlineEntityFormHandler.
  */
 
-namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+namespace Drupal\inline_entity_form\InlineEntityForm;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 
-class CommerceProductInlineEntityFormController extends EntityInlineEntityFormController {
+/**
+ * Commerce product inline entity form handler.
+ *
+ * @TODO - this needs to be ported. Not in a working state ATM.
+ */
+class CommerceProductInlineEntityFormHandler extends EntityInlineEntityFormHandler {
 
   /**
    * {@inheritdoc}
@@ -131,7 +136,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::settingsForm().
+   * Overrides EntityInlineEntityFormHandler::settingsForm().
    */
   public function settingsForm($field, $instance) {
     $form = parent::settingsForm($field, $instance);
@@ -350,6 +355,8 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
 
   /**
    * {@inheritdoc}
+   *
+   * @TODO - this function no longer exists.
    */
   public function save(EntityInterface $entity, $context) {
     // Remove the temporary message added in entityFormSubmit() so that
@@ -383,7 +390,7 @@ class CommerceProductInlineEntityFormController extends EntityInlineEntityFormCo
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::delete().
+   * Overrides EntityInlineEntityFormHandler::delete().
    *
    * Disables products that can't be deleted (because they are already
    * referenced from a line item, or for some other reason), deletes the rest.

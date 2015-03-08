@@ -1,23 +1,18 @@
 <?php
 
 /**
- * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\TaxonomyTermInlineEntityFormController.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\TaxonomyTermInlineEntityFormHandler.
  */
 
-namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+namespace Drupal\inline_entity_form\InlineEntityForm;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Taxonomy term inline form controller.
- *
- * @InlineEntityFormController(
- *   id = "entity:taxonomy_term",
- *   label = "Taxonomy term inline form",
- * )
+ * Taxonomy term inline form handler.
  */
-class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormController {
+class TaxonomyTermInlineEntityFormHandler extends EntityInlineEntityFormHandler {
 
   /**
    * {@inheritdoc}
@@ -31,7 +26,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::tableFields().
+   * Overrides EntityInlineEntityFormHandler::tableFields().
    *
    * We can't use the parent class method because the taxonomy term metadata
    * wrapper doesn't have a property that matches the entity bundle key.
@@ -120,13 +115,6 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
     // Separate the description and format.
     $entity->format = $entity->description['format'];
     $entity->description = $entity->description['value'];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function save(EntityInterface $entity, $context) {
-    taxonomy_term_save($entity);
   }
 
 }

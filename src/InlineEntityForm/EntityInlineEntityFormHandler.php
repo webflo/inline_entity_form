@@ -1,42 +1,26 @@
 <?php
 
 /**
- * Contains \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormController.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler.
  */
 
-namespace Drupal\inline_entity_form\Plugin\InlineEntityForm;
+namespace Drupal\inline_entity_form\InlineEntityForm;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormControllerInterface;
-use Drupal\Component\Plugin\PluginBase;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Generic entity inline form.
- *
- * @InlineEntityFormController(
- *   id = "entity",
- *   label = "Entity inline form",
- *   deriver = "Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm",
- * )
- *
- * @see \Drupal\inline_entity_form\Plugin\Deriver\EntityInlineEntityForm
+ * Generic entity inline form handler.
  */
-class EntityInlineEntityFormController extends PluginBase implements InlineEntityFormControllerInterface, ContainerFactoryPluginInterface {
-
-  /**
-   * Entity type ID.
-   *
-   * @var string
-   */
-  protected $entityTypeId;
+class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFormHandlerInterface {
 
   /**
    * Entity manager service.
@@ -44,6 +28,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @var \Drupal\Core\Entity\EntityManagerInterface
    */
   protected $entityManager;
+
+  /**
+   * Handler configuration.
+   *
+   * @var array
+   */
+  protected $configuration;
 
   /**
    * Module handler service.
@@ -66,23 +57,16 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   Module handler service.
    */
-  public function __construct($configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition);
-
-    list(, $this->entityTypeId) = explode(':', $plugin_id, 2);
+  public function __construct(EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler) {
     $this->entityManager = $entity_manager;
     $this->moduleHandler = $module_handler;
-    $this->setConfiguration($configuration);
   }
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+  public static function create(ContainerInterface $container) {
     return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
       $container->get('entity.manager'),
       $container->get('module_handler')
     );
@@ -120,8 +104,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function tableFields($bundles) {
-    $info = $this->entityManager->getDefinition($this->entityTypeId);
-    // $metadata = \Drupal::entityManager()->getFieldDefinitions($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityTypeId());
     $metadata = array();
 
     $fields = array();
@@ -158,12 +141,13 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    */
   public function defaultConfiguration() {
     return [
-     'allow_existing' => FALSE,
-     'match_operator' => 'CONTAINS',
-     'delete_references' => FALSE,
-     'override_labels' => FALSE,
-     'label_singular' => '',
-     'label_plural' => '',
+      'allow_existing' => FALSE,
+      'match_operator' => 'CONTAINS',
+      'delete_references' => FALSE,
+      'override_labels' => FALSE,
+      'label_singular' => '',
+      'label_plural' => '',
+      'entity type' => '',
     ];
   }
 
@@ -199,7 +183,7 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
    * {@inheritdoc}
    */
   public function entityTypeId() {
-    return $this->entityTypeId;
+    return $this->configuration['entity type'];
   }
 
   /**
@@ -346,15 +330,8 @@ class EntityInlineEntityFormController extends PluginBase implements InlineEntit
   /**
    * {@inheritdoc}
    */
-  public function save(EntityInterface $entity, $context) {
-    return $entity->save();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function delete($ids, $context) {
-    entity_delete_multiple($this->entityTypeId, $ids);
+    entity_delete_multiple($this->entityTypeId(), $ids);
   }
 
   /**

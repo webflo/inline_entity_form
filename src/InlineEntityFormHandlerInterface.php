@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Contains \Drupal\inline_entity_form\InlineEntityFormControllerInterface.
+ * Contains \Drupal\inline_entity_form\InlineEntityFormHandlerInterface.
  */
 
 namespace Drupal\inline_entity_form;
@@ -14,7 +14,7 @@ use Drupal\Core\Entity\EntityInterface;
 /**
  * Defines the interface for entity browser widgets.
  */
-interface InlineEntityFormControllerInterface extends ConfigurablePluginInterface {
+interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface {
 
   /**
    * Returns an array of libraries for the current entity type, keyed by theme
@@ -151,18 +151,6 @@ interface InlineEntityFormControllerInterface extends ConfigurablePluginInterfac
    *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
    */
   public function removeFormSubmit($remove_form, FormStateInterface $form_state);
-
-  /**
-   * Permanently saves the given entity.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity to save.
-   * @param array $context
-   *   Available keys:
-   *   - parent_entity_type: The type of the parent entity.
-   *   - parent_entity: The parent entity.
-   */
-  public function save(EntityInterface $entity, $context);
 
   /**
    * Delete permanently saved entities.

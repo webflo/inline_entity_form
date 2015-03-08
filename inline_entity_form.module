@@ -42,7 +42,11 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
   $form_display = entity_get_form_display($instance->entity_type, $instance->bundle, 'default');
   $widget_settings = $form_display->getComponent($field->getName())['settings'];
 
-  return \Drupal::service("plugin.manager.inline_entity_form")->createInstance('entity:' . $field_settings['target_type'], $widget_settings);
+  /** @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler */
+  $handler = \Drupal::entityManager()->getFormObject($field_settings['target_type'], 'inline entity form');
+  $handler->setConfiguration($widget_settings + ['entity type' => $field_settings['target_type']]);
+
+  return $handler;
 
   /*
   $field = field_info_field($instance['field_name']);
@@ -60,30 +64,20 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
 
 /**
  * Implements hook_entity_info_alter().
+ *
+ * @TODO - Add handlers for other core entity types.
  */
-function inline_entity_form_entity_info_alter(&$entity_info) {
-  /**
-   * @var \Drupal\Core\Entity\EntityType[] $entity_info
-   */
-  $entity_info['node']->setFormClass('inline entity form', '\Drupal\inline_entity_form\Plugin\InlineEntityForm\NodeInlineEntityFormController');
+function inline_entity_form_entity_type_build(array &$entity_types) {
+  /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+  if (!$entity_types['node']->getFormClass('inline entity form')) {
+    $entity_types['node']->setFormClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
+  }
 
-  /*
-  if (isset($entity_info['taxonomy_term'])) {
-    $entity_info['taxonomy_term']['inline entity form'] = array(
-      'controller' => 'TaxonomyTermInlineEntityFormController',
-    );
+  foreach ($entity_types as &$entity_type) {
+    if (!$entity_type->getFormClass('inline entity form')) {
+      $entity_type->setFormClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler');
+    }
   }
-  if (isset($entity_info['commerce_product'])) {
-    $entity_info['commerce_product']['inline entity form'] = array(
-      'controller' => 'CommerceProductInlineEntityFormController',
-    );
-  }
-  if (isset($entity_info['commerce_line_item'])) {
-    $entity_info['commerce_line_item']['inline entity form'] = array(
-      'controller' => 'CommerceLineItemInlineEntityFormController',
-    );
-  }
-  */
 }
 
 /**
