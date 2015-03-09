@@ -218,15 +218,8 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
 
     $form_state->set('field', $child_form_state->get('field'));
 
-    $this->buildFormActions($entity_form);
-    $this->addSubmitHandlers($entity_form);
-
     $entity_form['#element_validate'][] = [get_class($this), 'entityFormValidate'];
     $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
-    // Add the pre_render callback that powers the #fieldset form element key,
-    // which moves the element to the specified fieldset without modifying its
-    // position in $form_state['values'].
-    $entity_form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
 
     // Allow other modules to alter the form.
     $this->moduleHandler->alter('inline_entity_form_entity_form', $entity_form, $form_state);
@@ -384,87 +377,6 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     return $child_form_state;
-  }
-
-  /**
-   * Adds actions to the inline entity form.
-   *
-   * @param array $form
-   *   Form array structure.
-   */
-  protected function buildFormActions(&$form) {
-    $labels = $this->labels();
-    // Build a delta suffix that's appended to button #name keys for uniqueness.
-    $delta = $form['#ief_id'];
-    if ($form['#op'] == 'add') {
-      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
-    }
-    else {
-      $delta .= '-' . $form['#ief_row_delta'];
-      $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
-    }
-
-    $form['actions'] = [
-      '#type' => 'container',
-      '#weight' => 100,
-    ];
-    $form['actions']['ief_' . $form['#op'] . '_save'] = [
-      '#type' => 'submit',
-      '#value' => $save_label,
-      '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
-      '#limit_validation_errors' => [$form['#parents']],
-      '#attributes' => ['class' => ['ief-entity-submit']],
-      '#ajax' => [
-        'callback' => 'inline_entity_form_get_element',
-        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
-      ],
-    ];
-    $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
-      '#type' => 'submit',
-      '#value' => t('Cancel'),
-      '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
-      '#limit_validation_errors' => [],
-      '#ajax' => [
-        'callback' => 'inline_entity_form_get_element',
-        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
-      ],
-    ];
-  }
-
-  /**
-   * Adds submit handlers to the inline entity form.
-   *
-   * @param array $form
-   *   Form array structure.
-   */
-  protected function addSubmitHandlers(&$form) {
-    if ($form['#op'] == 'add') {
-      $form['actions']['ief_add_save']['#submit'] = [
-        'inline_entity_form_trigger_submit',
-        'inline_entity_form_close_child_forms',
-        'inline_entity_form_close_form',
-      ];
-      $form['actions']['ief_add_cancel']['#submit'] = [
-        'inline_entity_form_close_child_forms',
-        'inline_entity_form_close_form',
-        'inline_entity_form_cleanup_form_state',
-      ];
-    }
-    else {
-      $form['actions']['ief_edit_save']['#ief_row_delta'] = $form['#ief_row_delta'];
-      $form['actions']['ief_edit_cancel']['#ief_row_delta'] = $form['#ief_row_delta'];
-
-      $form['actions']['ief_edit_save']['#submit'] = [
-        'inline_entity_form_trigger_submit',
-        'inline_entity_form_close_child_forms',
-        'inline_entity_form_close_row_form',
-      ];
-      $form['actions']['ief_edit_cancel']['#submit'] = [
-        'inline_entity_form_close_child_forms',
-        'inline_entity_form_close_row_form',
-        'inline_entity_form_cleanup_row_form_state',
-      ];
-    }
   }
 
   /**
