@@ -7,15 +7,13 @@
 
 namespace Drupal\inline_entity_form;
 
-use Drupal\Component\Plugin\ConfigurablePluginInterface;
 use Drupal\Core\Entity\EntityHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Defines the interface for entity browser widgets.
  */
-interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface, EntityHandlerInterface {
+interface InlineEntityFormHandlerInterface extends EntityHandlerInterface {
 
   /**
    * Returns an array of libraries for the current entity type, keyed by theme
@@ -72,23 +70,20 @@ interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface, 
   public function tableFields($bundles);
 
   /**
-   * Returns a setting value.
-   *
-   * @param string $name
-   *   The name of the setting value to return.
-   *
-   * @return mixed
-   *   A setting value.
-   */
-  public function getSetting($name);
-
-  /**
-   * Returns the id of entity type managed by this controller.
+   * Returns the id of entity type managed by this handler.
    *
    * @return string
    *   The entity type id..
    */
   public function entityTypeId();
+
+  /**
+   * Sets the id of entity type managed by this handler.
+   *
+   * @param string $entity_type_id
+   *   The entity type id..
+   */
+  public function setEntityTypeId($entity_type_id);
 
   /**
    * Returns the entity form to be shown through the IEF widget.
@@ -128,30 +123,6 @@ interface InlineEntityFormHandlerInterface extends ConfigurablePluginInterface, 
    *   The form state of the parent form.
    */
   public function entityFormSubmit(&$entity_form, FormStateInterface $form_state);
-
-  /**
-   * Returns the remove form to be shown through the IEF widget.
-   *
-   * @param array $entity_form
-   *   The entity form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state of the parent form.
-   */
-  public function removeForm($remove_form, FormStateInterface $form_state);
-
-  /**
-   * Handles the submission of a remove form.
-   * Decides what should happen to the entity after the removal confirmation.
-   *
-   * @param array $entity_form
-   *   The entity form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state of the parent form.
-   *
-   * @return int
-   *   IEF_ENTITY_UNLINK or IEF_ENTITY_UNLINK_DELETE.
-   */
-  public function removeFormSubmit($remove_form, FormStateInterface $form_state);
 
   /**
    * Delete permanently saved entities.
