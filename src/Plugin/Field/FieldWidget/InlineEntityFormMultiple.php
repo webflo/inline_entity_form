@@ -37,7 +37,7 @@ class InlineEntityFormMultiple extends WidgetBase {
   protected $entityManager;
 
   /**
-   * The inline entity from controller.
+   * The inline entity from handler.
    *
    * @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface
    */
@@ -306,13 +306,18 @@ class InlineEntityFormMultiple extends WidgetBase {
           '#ief_id' => $this->getIefId(),
           // Identifies the table row to which the form belongs.
           '#ief_row_delta' => $key,
+          // Add the pre_render callback that powers the #fieldset form element key,
+          // which moves the element to the specified fieldset without modifying its
+          // position in $form_state['values'].
+          '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
         );
         // Prepare data for the form callbacks.
         $form = & $element['entities'][$key]['form'];
 
         // Add the appropriate form.
         if ($value['form'] == 'edit') {
-          $form += inline_entity_form_entity_form($this->iefHandler, $form, $form_state);
+          $form += $this->iefHandler->entityForm($form, $form_state);
+          $this->buildEntityFormActions($form);
         }
         elseif ($value['form'] == 'remove') {
           $this->buildRemoveForm($form);
@@ -482,11 +487,16 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#entity_type' => $settings['target_type'],
         // Pass the langcode of the parent entity,
         '#parent_language' => $parent_langcode,
-      );
+        // Add the pre_render callback that powers the #fieldset form element key,
+        // which moves the element to the specified fieldset without modifying its
+        // position in $form_state['values'].
+        '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
+    );
 
       if ($form_state->get(['inline_entity_form', $this->getIefId(), 'form']) == 'add') {
         $element['form']['#op'] = 'add';
-        $element['form'] += inline_entity_form_entity_form($this->iefHandler, $element['form'], $form_state);
+        $element['form'] += $this->iefHandler->entityForm($element['form'], $form_state);
+        $this->buildEntityFormActions($element['form']);
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
@@ -608,6 +618,72 @@ class InlineEntityFormMultiple extends WidgetBase {
     return $items;
   }
 
+  /**
+   * Adds actions to the inline entity form.
+   *
+   * @param array $form
+   *   Form array structure.
+   */
+  protected function buildEntityFormActions(&$form) {
+    $labels = $this->iefHandler->labels();
+
+    // Build a delta suffix that's appended to button #name keys for uniqueness.
+    $delta = $form['#ief_id'];
+    if ($form['#op'] == 'add') {
+      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+    else {
+      $delta .= '-' . $form['#ief_row_delta'];
+      $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+
+    // Add action submit elements.
+    $form['actions'] = [
+      '#type' => 'container',
+      '#weight' => 100,
+    ];
+    $form['actions']['ief_' . $form['#op'] . '_save'] = [
+        '#type' => 'submit',
+        '#value' => $save_label,
+        '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
+        '#limit_validation_errors' => [$form['#parents']],
+        '#attributes' => ['class' => ['ief-entity-submit']],
+    ];
+    $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
+        '#type' => 'submit',
+        '#value' => t('Cancel'),
+        '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
+    ];
+
+    // Add submit handlers depending on operation.
+    if ($form['#op'] == 'add') {
+      $form['actions']['ief_add_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+      ];
+      $form['actions']['ief_add_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+        'inline_entity_form_cleanup_form_state',
+      ];
+    }
+    else {
+      $form['actions']['ief_edit_save']['#ief_row_delta'] = $form['#ief_row_delta'];
+      $form['actions']['ief_edit_cancel']['#ief_row_delta'] = $form['#ief_row_delta'];
+
+      $form['actions']['ief_edit_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+      ];
+      $form['actions']['ief_edit_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+        'inline_entity_form_cleanup_row_form_state',
+      ];
+    }
+  }
 
   /**
    * Builds remove form.
@@ -765,5 +841,6 @@ class InlineEntityFormMultiple extends WidgetBase {
       return $this->iefHandler->labels();
     }
   }
+  
 }
 
