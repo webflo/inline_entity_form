@@ -37,11 +37,11 @@ class InlineEntityFormMultiple extends WidgetBase {
   protected $entityManager;
 
   /**
-   * The inline entity from controller.
+   * The inline entity from handler.
    *
-   * @var \Drupal\inline_entity_form\Plugin\InlineEntityForm\EntityInlineEntityFormHandler
+   * @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface
    */
-  protected $iefController;
+  protected $iefHandler;
 
   protected $iefId;
 
@@ -152,8 +152,8 @@ class InlineEntityFormMultiple extends WidgetBase {
   }
 
   function initializeIefController() {
-    if (!isset($this->iefController)) {
-      $this->iefController = inline_entity_form_get_controller($this->fieldDefinition);
+    if (!isset($this->iefHandler)) {
+      $this->iefHandler = inline_entity_form_get_controller($this->fieldDefinition);
     }
   }
 
@@ -168,12 +168,12 @@ class InlineEntityFormMultiple extends WidgetBase {
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $this->initializeIefController();
 
-    if (!$this->iefController) {
+    if (!$this->iefHandler) {
       return $element;
     }
 
     // Get the entity type labels for the UI strings.
-    $labels = $this->iefController->labels();
+    $labels = $this->iefHandler->labels();
 
     // Build a parents array for this element's values in the form.
     $parents = array_merge($element['#field_parents'], array(
@@ -256,7 +256,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     );
 
     // Get the fields that should be displayed in the table.
-    $fields = $this->iefController->tableFields($settings['handler_settings']['target_bundles']);
+    $fields = $this->iefHandler->tableFields($settings['handler_settings']['target_bundles']);
     $context = array(
       'parent_entity_type' => $this->fieldDefinition->entity_type,
       'parent_bundle' => $this->fieldDefinition->bundle,
@@ -308,16 +308,21 @@ class InlineEntityFormMultiple extends WidgetBase {
           '#ief_id' => $this->getIefId(),
           // Identifies the table row to which the form belongs.
           '#ief_row_delta' => $key,
+          // Add the pre_render callback that powers the #fieldset form element key,
+          // which moves the element to the specified fieldset without modifying its
+          // position in $form_state['values'].
+          '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
         );
         // Prepare data for the form callbacks.
         $form = & $element['entities'][$key]['form'];
 
         // Add the appropriate form.
         if ($value['form'] == 'edit') {
-          $form += inline_entity_form_entity_form($this->iefController, $form, $form_state);
+          $form += $this->iefHandler->entityForm($form, $form_state);
+          $this->buildEntityFormActions($form);
         }
         elseif ($value['form'] == 'remove') {
-          $form += inline_entity_form_remove_form($this->iefController, $form, $form_state);
+          $form += inline_entity_form_remove_form($this->iefHandler, $form, $form_state);
         }
       }
       else {
@@ -356,7 +361,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         // If 'allow_existing' is on, the default removal operation is unlink
         // and the access check for deleting happens inside the controller
         // removeForm() method.
-        if (empty($entity_id) || $this->iefController->getSetting('allow_existing') || $entity->access('delete')) {
+        if (empty($entity_id) || $this->iefHandler->getSetting('allow_existing') || $entity->access('delete')) {
           $row['actions']['ief_entity_remove'] = array(
             '#type' => 'submit',
             '#value' => t('Remove'),
@@ -395,7 +400,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     // field is required and empty, and there's only one allowed bundle).
     $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
     if (empty($entities)) {
-      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->iefController->getSetting('allow_existing')) {
+      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->iefHandler->getSetting('allow_existing')) {
         $bundle = reset($settings['handler_settings']['target_bundles']);
 
         // The parent entity type and bundle must not be the same as the inline
@@ -455,7 +460,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         );
       }
 
-      if ($this->iefController->getSetting('allow_existing')) {
+      if ($this->iefHandler->getSetting('allow_existing')) {
         $element['actions']['ief_add_existing'] = array(
           '#type' => 'submit',
           '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
@@ -484,15 +489,20 @@ class InlineEntityFormMultiple extends WidgetBase {
         '#entity_type' => $settings['target_type'],
         // Pass the langcode of the parent entity,
         '#parent_language' => $parent_langcode,
-      );
+        // Add the pre_render callback that powers the #fieldset form element key,
+        // which moves the element to the specified fieldset without modifying its
+        // position in $form_state['values'].
+        '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
+    );
 
       if ($form_state->get(['inline_entity_form', $this->getIefId(), 'form']) == 'add') {
         $element['form']['#op'] = 'add';
-        $element['form'] += inline_entity_form_entity_form($this->iefController, $element['form'], $form_state);
+        $element['form'] += $this->iefHandler->entityForm($element['form'], $form_state);
+        $this->buildEntityFormActions($element['form']);
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
-        if (!$this->iefController->getSetting('allow_existing') && $this->fieldDefinition->isRequired()
+        if (!$this->iefHandler->getSetting('allow_existing') && $this->fieldDefinition->isRequired()
           && empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])
           && count($settings['handler_settings']['target_bundles']) == 1
         ) {
@@ -500,7 +510,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         }
       }
       elseif ($form_state->get('inline_entity_form')[$this->getIefId()]['form'] == 'ief_add_existing') {
-        $element['form'] += inline_entity_form_reference_form($this->iefController, $element['form'], $form_state);
+        $element['form'] += inline_entity_form_reference_form($this->iefHandler, $element['form'], $form_state);
       }
 
       // No entities have been added. Remove the outer fieldset to reduce
@@ -609,6 +619,83 @@ class InlineEntityFormMultiple extends WidgetBase {
 
     return $items;
   }
+
+  /**
+   * Adds actions to the inline entity form.
+   *
+   * @param array $form
+   *   Form array structure.
+   */
+  protected function buildEntityFormActions(&$form) {
+    $labels = $this->iefHandler->labels();
+
+    // Build a delta suffix that's appended to button #name keys for uniqueness.
+    $delta = $form['#ief_id'];
+    if ($form['#op'] == 'add') {
+      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+    else {
+      $delta .= '-' . $form['#ief_row_delta'];
+      $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
+    }
+
+    // Add action submit elements.
+    $form['actions'] = [
+      '#type' => 'container',
+      '#weight' => 100,
+    ];
+    $form['actions']['ief_' . $form['#op'] . '_save'] = [
+      '#type' => 'submit',
+      '#value' => $save_label,
+      '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
+      '#limit_validation_errors' => [$form['#parents']],
+      '#attributes' => ['class' => ['ief-entity-submit']],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+    ];
+    $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
+      '#limit_validation_errors' => [],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+    ];
+
+    // Add submit handlers depending on operation.
+    if ($form['#op'] == 'add') {
+      $form['actions']['ief_add_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+      ];
+      $form['actions']['ief_add_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_form',
+        'inline_entity_form_cleanup_form_state',
+      ];
+    }
+    else {
+      $form['actions']['ief_edit_save']['#ief_row_delta'] = $form['#ief_row_delta'];
+      $form['actions']['ief_edit_cancel']['#ief_row_delta'] = $form['#ief_row_delta'];
+
+      $form['actions']['ief_edit_save']['#submit'] = [
+        'inline_entity_form_trigger_submit',
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+      ];
+      $form['actions']['ief_edit_cancel']['#submit'] = [
+        'inline_entity_form_close_child_forms',
+        'inline_entity_form_close_row_form',
+        'inline_entity_form_cleanup_row_form_state',
+      ];
+    }
+  }
+
 
 }
 
