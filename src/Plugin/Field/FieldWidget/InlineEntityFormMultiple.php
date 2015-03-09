@@ -71,9 +71,7 @@ class InlineEntityFormMultiple extends WidgetBase {
    *   The definition of the reference field instance.
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
-    $ief_controller = inline_entity_form_get_controller($this->fieldDefinition);
-
-    $labels = $ief_controller->labels();
+    $labels = $this->labels();
     $states_prefix = 'instance[widget][settings][type_settings]';
 
     $element['allow_existing'] = array(
@@ -164,7 +162,6 @@ class InlineEntityFormMultiple extends WidgetBase {
     $this->entityManager = \Drupal::entityManager();
     $settings = $this->getFieldSettings();
 
-    $entity_info = $this->entityManager->getDefinition($settings['target_type']);
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $this->initializeIefController();
 
@@ -173,7 +170,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
 
     // Get the entity type labels for the UI strings.
-    $labels = $this->iefHandler->labels();
+    $labels = $this->labels();
 
     // Build a parents array for this element's values in the form.
     $parents = array_merge($element['#field_parents'], array(
@@ -277,6 +274,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       }
 
       // Data used by theme_inline_entity_form_entity_table().
+      /** @var \Drupal\Core\Entity\EntityInterface $entity */
       $entity = $value['entity'];
       $element['entities'][$key]['#entity'] = $value['entity'];
       $element['entities'][$key]['#item'] = $items->offsetGet($key);
@@ -322,7 +320,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           $this->buildEntityFormActions($form);
         }
         elseif ($value['form'] == 'remove') {
-          $form += inline_entity_form_remove_form($this->iefHandler, $form, $form_state);
+          $this->buildRemoveForm($form);
         }
       }
       else {
@@ -361,7 +359,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         // If 'allow_existing' is on, the default removal operation is unlink
         // and the access check for deleting happens inside the controller
         // removeForm() method.
-        if (empty($entity_id) || $this->iefHandler->getSetting('allow_existing') || $entity->access('delete')) {
+        if (empty($entity_id) || $this->settings['allow_existing'] || $entity->access('delete')) {
           $row['actions']['ief_entity_remove'] = array(
             '#type' => 'submit',
             '#value' => t('Remove'),
@@ -400,7 +398,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     // field is required and empty, and there's only one allowed bundle).
     $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
     if (empty($entities)) {
-      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->iefHandler->getSetting('allow_existing')) {
+      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->settings['allow_existing']) {
         $bundle = reset($settings['handler_settings']['target_bundles']);
 
         // The parent entity type and bundle must not be the same as the inline
@@ -460,7 +458,7 @@ class InlineEntityFormMultiple extends WidgetBase {
         );
       }
 
-      if ($this->iefHandler->getSetting('allow_existing')) {
+      if ($this->settings['allow_existing']) {
         $element['actions']['ief_add_existing'] = array(
           '#type' => 'submit',
           '#value' => t('Add existing @type_singular', array('@type_singular' => $labels['singular'])),
@@ -502,7 +500,7 @@ class InlineEntityFormMultiple extends WidgetBase {
 
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
-        if (!$this->iefHandler->getSetting('allow_existing') && $this->fieldDefinition->isRequired()
+        if (!$this->settings['allow_existing'] && $this->fieldDefinition->isRequired()
           && empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])
           && count($settings['handler_settings']['target_bundles']) == 1
         ) {
@@ -627,7 +625,7 @@ class InlineEntityFormMultiple extends WidgetBase {
    *   Form array structure.
    */
   protected function buildEntityFormActions(&$form) {
-    $labels = $this->iefHandler->labels();
+    $labels = $this->labels();
 
     // Build a delta suffix that's appended to button #name keys for uniqueness.
     $delta = $form['#ief_id'];
@@ -696,6 +694,162 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
   }
 
+  /**
+   * Builds remove form.
+   *
+   * @param array $form
+   *   Form array structure.
+   */
+  protected function buildRemoveForm(&$form) {
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
+    $entity = $form['#entity'];
+    $entity_id = $entity->id();
+    $entity_label = $entity->label();
+    $labels = $this->labels();
+
+    if ($entity_label) {
+      $message = t('Are you sure you want to remove %label?', ['%label' => $entity_label]);
+    }
+    else {
+      $message = t('Are you sure you want to remove this %entity_type?', ['%entity_type' => $labels['singular']]);
+    }
+
+    $form['message'] = [
+      '#theme_wrappers' => ['container'],
+      '#markup' => $message,
+    ];
+
+    if (!empty($entity_id) && $this->settings['allow_existing'] && $entity->access('delete')) {
+      $form['delete'] = [
+        '#type' => 'checkbox',
+        '#title' => t('Delete this @type_singular from the system.', array('@type_singular' => $labels['singular'])),
+      ];
+    }
+
+    // Build a deta suffix that's appended to button #name keys for uniqueness.
+    $delta = $form['#ief_id'] . '-' . $form['#ief_row_delta'];
+
+    // Add actions to the form.
+    $form['actions'] = [
+      '#type' => 'container',
+      '#weight' => 100,
+    ];
+    $form['actions']['ief_remove_confirm'] = [
+      '#type' => 'submit',
+      '#value' => t('Remove'),
+      '#name' => 'ief-remove-confirm-' . $delta,
+      '#limit_validation_errors' => [$form['#parents']],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+      '#submit' => [[get_class($this), 'submitConfirmRemove']],
+      '#ief_row_delta' => $form['#ief_row_delta'],
+    ];
+    $form['actions']['ief_remove_cancel'] = [
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#name' => 'ief-remove-cancel-' . $delta,
+      '#limit_validation_errors' => [],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
+      '#submit' => [[get_class($this), 'submitCloseRow']],
+      '#ief_row_delta' => $form['#ief_row_delta'],
+    ];
+  }
+
+  /**
+   * Button #submit callback: Closes a row form in the IEF widget.
+   *
+   * @param $form
+   *   The complete parent form.
+   * @param $form_state
+   *   The form state of the parent form.
+   *
+   * @see inline_entity_form_open_row_form().
+   */
+  public static function submitCloseRow($form, FormStateInterface $form_state) {
+    $element = inline_entity_form_get_element($form, $form_state);
+    $ief_id = $element['#ief_id'];
+    $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
+
+    $form_state->setRebuild();
+    $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta, 'form'], NULL);
+  }
+
+
+  /**
+   * Remove form submit callback.
+   *
+   * The row is identified by #ief_row_delta stored on the triggering
+   * element.
+   * This isn't an #element_validate callback to avoid processing the
+   * remove form when the main form is submitted.
+   *
+   * @param $form
+   *   The complete parent form.
+   * @param $form_state
+   *   The form state of the parent form.
+   */
+  public static function submitConfirmRemove($form, FormStateInterface $form_state) {
+    $element = inline_entity_form_get_element($form, $form_state);
+    $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
+
+    /** @var \Drupal\Core\Field\FieldDefinitionInterface $instance */
+    $instance = $form_state->get(['inline_entity_form', $element['#ief_id'], 'instance']);
+
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
+    $entity = $element['entities'][$delta]['form']['#entity'];
+    $entity_id = $entity->id();
+
+    $widget = \Drupal::entityManager()
+      ->getStorage('entity_form_display')
+      ->load($entity->getEntityTypeId() . '.' . $entity->bundle() . '.default')
+      ->getComponent($instance->getName());
+
+    $form_values = NestedArray::getValue($form_state->getValues(), $element['entities'][$delta]['form']['#parents']);
+    $form_state->setRebuild();
+
+    // This entity hasn't been saved yet, we can just unlink it.
+    if (empty($entity_id) || ($widget['settings']['allow_existing'] && empty($form_values['delete']))) {
+      $form_state->set(['inline_entity_form', $element['#ief_id'], 'entities', $delta], NULL);
+    }
+    else {
+      $delete = $form_state->get(['inline_entity_form', $element['#ief_id'], 'delete']);
+      $delete['delete'][] = $entity_id;
+      $form_state->set(['inline_entity_form', $element['#ief_id'], 'delete'], $delete);
+      $form_state->set(['inline_entity_form', $element['#ief_id'], 'entities', $delta], NULL);
+    }
+  }
+
+  /**
+   * Returns an array of entity type labels (singular, plural) fit to be
+   * included in the UI text.
+   *
+   * @TODO - This could be shared with InlineEntityFormSingle. Let's see if we
+   * base one of the widgets out of the other one. We could use a trait if that
+   * won't be possible.
+   *
+   * @return array
+   *   Array containing two values:
+   *     - singular: label for singular form,
+   *     - plural: label for plural form.
+   */
+  protected function labels() {
+    // The admin has specified the exact labels that should be used.
+    if ($this->settings['override_labels']) {
+      return [
+        'singular' => $this->settings['label_singular'],
+        'plural' => $this->settings['label_plural'],
+      ];
+    }
+    else {
+      $this->initializeIefController();
+      return $this->iefHandler->labels();
+    }
+  }
 
 }
 
