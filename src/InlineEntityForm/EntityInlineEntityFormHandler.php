@@ -6,9 +6,9 @@
 
 namespace Drupal\inline_entity_form\InlineEntityForm;
 
-use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Generic entity inline form handler.
  */
-class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFormHandlerInterface {
+class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface {
 
   /**
    * Entity manager service.
@@ -64,7 +64,7 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container) {
+  public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
       $container->get('entity.manager'),
       $container->get('module_handler')
@@ -171,7 +171,7 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
 
     $form_state->set('field', $child_form_state->get('field'));
 
-    $entity_form['#element_validate'][] = 'inline_entity_form_entity_form_validate';
+    $entity_form['#element_validate'][] = [get_class($this), 'entityFormValidate'];
     $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
 
     // Allow other modules to alter the form.
@@ -183,12 +183,26 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
   /**
    * {@inheritdoc}
    */
-  public function entityFormValidate($entity_form, FormStateInterface $form_state) {
-    /*
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
+  public static function entityFormValidate($entity_form, FormStateInterface $form_state) {
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $entity_form['#entity'];
-    $form_state['form_display']->validateFormValues($entity, $entity_form, $form_state);
-    */
+
+    /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $form_display */
+    $form_display = \Drupal::entityManager()->getStorage('entity_form_display')->load($entity->getEntityTypeId() . '.' . $entity->bundle() . '.default');
+    $form_display->validateFormValues($entity, $entity_form, $form_state);
+
+    // Unset un-triggered conditional fields errors
+    $errors = $form_state->getErrors();
+    $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
+    if ($errors && !empty($conditional_fields_untriggered_dependents)) {
+      foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
+        if (!empty($untriggered_dependents['errors'])) {
+          foreach (array_keys($untriggered_dependents['errors']) as $key) {
+            unset($errors[$key]);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -306,4 +320,5 @@ class EntityInlineEntityFormHandler extends EntityForm implements InlineEntityFo
       return $form_state->get(['inline_entity_form', $form['#ief_id'], 'entities', $form['#ief_row_delta'], 'entity']);
     }
   }
+
 }
