@@ -625,7 +625,7 @@ class InlineEntityFormMultiple extends WidgetBase {
    *   Form array structure.
    */
   protected function buildEntityFormActions(&$form) {
-    $labels = $this->iefHandler->labels();
+    $labels = $this->labels();
 
     // Build a delta suffix that's appended to button #name keys for uniqueness.
     $delta = $form['#ief_id'];
@@ -643,16 +643,25 @@ class InlineEntityFormMultiple extends WidgetBase {
       '#weight' => 100,
     ];
     $form['actions']['ief_' . $form['#op'] . '_save'] = [
-        '#type' => 'submit',
-        '#value' => $save_label,
-        '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
-        '#limit_validation_errors' => [$form['#parents']],
-        '#attributes' => ['class' => ['ief-entity-submit']],
+      '#type' => 'submit',
+      '#value' => $save_label,
+      '#name' => 'ief-' . $form['#op'] . '-submit-' . $delta,
+      '#limit_validation_errors' => [$form['#parents']],
+      '#attributes' => ['class' => ['ief-entity-submit']],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
     ];
     $form['actions']['ief_' . $form['#op'] . '_cancel'] = [
-        '#type' => 'submit',
-        '#value' => t('Cancel'),
-        '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
+      '#type' => 'submit',
+      '#value' => t('Cancel'),
+      '#name' => 'ief-' . $form['#op'] . '-cancel-' . $delta,
+      '#limit_validation_errors' => [],
+      '#ajax' => [
+        'callback' => 'inline_entity_form_get_element',
+        'wrapper' => 'inline-entity-form-' . $form['#ief_id'],
+      ],
     ];
 
     // Add submit handlers depending on operation.
@@ -841,6 +850,6 @@ class InlineEntityFormMultiple extends WidgetBase {
       return $this->iefHandler->labels();
     }
   }
-  
+
 }
 
