@@ -142,7 +142,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
    * {@inheritdoc}
    */
   public function entityForm($entity_form, FormStateInterface $form_state) {
-
+    
     // Assume create form if nothing defined.
     if (empty($entity_form['#op'])) {
       $entity_form['#op'] = 'add';
