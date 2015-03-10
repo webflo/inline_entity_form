@@ -78,14 +78,6 @@ interface InlineEntityFormHandlerInterface extends EntityHandlerInterface {
   public function entityTypeId();
 
   /**
-   * Sets the id of entity type managed by this handler.
-   *
-   * @param string $entity_type_id
-   *   The entity type id..
-   */
-  public function setEntityTypeId($entity_type_id);
-
-  /**
    * Returns the entity form to be shown through the IEF widget.
    *
    * When adding data to $form_state it should be noted that there can be
