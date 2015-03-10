@@ -114,7 +114,7 @@ interface InlineEntityFormHandlerInterface extends EntityHandlerInterface {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state of the parent form.
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state);
+  public static function entityFormSubmit(&$entity_form, FormStateInterface $form_state);
 
   /**
    * Delete permanently saved entities.

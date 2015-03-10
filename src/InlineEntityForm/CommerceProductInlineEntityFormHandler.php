@@ -300,7 +300,7 @@ class CommerceProductInlineEntityFormHandler extends EntityInlineEntityFormHandl
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $product = $entity_form['#entity'];

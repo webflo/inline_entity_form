@@ -14,6 +14,7 @@ use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
+use Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler;
 
 /**
  * Returns the Inline Entity Form controller for the passed-in reference field.
@@ -260,51 +261,6 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
   // in the form state.
   foreach (element_children($element['entities']) as $key) {
     $form_state->set(['inline_entity_form', $ief_id, 'entities', $key, '_weight'], $element['entities'][$key]['delta']['#value']);
-  }
-}
-
-/**
- * Submits an entity form.
- *
- * Note that at this point the entity is not yet saved, since the user might
- * still decide to cancel the parent form.
- *
- * @param $entity_form
- *  The form of the entity being managed inline.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_entity_form_submit($entity_form, FormStateInterface $form_state) {
-  $ief_id = $entity_form['#ief_id'];
-  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-  // Instantiate the controller and validate the form.
-  $controller = inline_entity_form_get_controller($instance);
-  $controller->entityFormSubmit($entity_form, $form_state);
-  $entity = $entity_form['#entity'];
-  inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
-
-  if ($entity_form['#op'] == 'add') {
-    // Determine the correct weight of the new element.
-    $weight = 0;
-    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
-    if (!empty($entities)) {
-      $weight = max(array_keys($entities)) + 1;
-    }
-    // Add the entity to form state, mark it for saving, and close the form.
-    $entities[] = array(
-      'entity' => $entity,
-      '_weight' => $weight,
-      'form' => NULL,
-      'needs_save' => TRUE,
-    );
-    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
-  }
-  else {
-    $delta = $entity_form['#ief_row_delta'];
-    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
-    $entities[$delta]['entity'] = $entity;
-    $entities[$delta]['needs_save'] = TRUE;
-    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
   }
 }
 
@@ -563,7 +519,7 @@ function inline_entity_form_close_form($form, FormStateInterface $form_state) {
  */
 function inline_entity_form_cleanup_form_state($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
-  inline_entity_form_cleanup_entity_form_state($element['form']['inline_entity_form'], $form_state);
+  EntityInlineEntityFormHandler::submitCleanFormState($element['form']['inline_entity_form'], $form_state);
 }
 
 /**
@@ -640,7 +596,7 @@ function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $fo
   $element = inline_entity_form_get_element($form, $form_state);
   $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
   $entity_form = $element['entities'][$delta]['form']['inline_entity_form'];
-  inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
+  EntityInlineEntityFormHandler::submitCleanFormState($entity_form, $form_state);
 }
 
 /**
@@ -656,41 +612,6 @@ function inline_entity_form_required_field($element, FormStateInterface $form_st
   if (!$has_children && !$form_open) {
     $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
     $form_state->setError($element, t('!name field is required.', array('!name' => $instance['label'])));
-  }
-}
-
-/**
- * Cleans up the form state for a submitted entity form.
- *
- * After field_attach_submit() has run and the form has been closed, the form
- * state still contains field data in $form_state['field']. Unless that
- * data is removed, the next form with the same #parents (reopened add form,
- * for example) will contain data (i.e. uploaded files) from the previous form.
- *
- * @param $entity_form
- *   The entity form.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_cleanup_entity_form_state($entity_form, FormStateInterface $form_state) {
-  $info = \Drupal::entityManager()->getDefinition($entity_form['#entity_type']);
-  if (!$info->get('field_ui_base_route')) {
-    // The entity type is not fieldable, nothing to cleanup.
-    return;
-  }
-
-  $bundle = $entity_form['#entity']->bundle();
-  $instances = \Drupal::entityManager()->getFieldDefinitions($entity_form['#entity_type'], $bundle);
-  foreach ($instances as $instance) {
-    $field_name = $instance->getName();
-    if (!empty($entity_form[$field_name]['#parents'])) {
-      $parents = $entity_form[$field_name]['#parents'];
-      array_pop($parents);
-      if (is_array($parents)) {
-        $field_state = array();
-        WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
-      }
-    }
   }
 }
 

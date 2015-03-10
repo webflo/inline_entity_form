@@ -139,6 +139,7 @@ class InlineEntityForm extends RenderElement implements ContainerFactoryPluginIn
     }
 
     $element += $ief_handler->entityForm($element, $form_state);
+
     return $element;
   }
 

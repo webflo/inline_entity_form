@@ -10,6 +10,7 @@ use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
@@ -155,7 +156,9 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $form_state->set('field', $child_form_state->get('field'));
 
     $entity_form['#element_validate'][] = [get_class($this), 'entityFormValidate'];
-    $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
+
+    $entity_form['#ief_element_submit'][] = [get_class($this), 'entityFormSubmit'];
+    $entity_form['#ief_element_submit'][] = [get_class($this), 'submitCleanFormState'];
 
     // Allow other modules to alter the form.
     $this->moduleHandler->alter('inline_entity_form_entity_form', $entity_form, $form_state);
@@ -191,14 +194,14 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $entity_form['#entity'];
     $operation = 'default';
 
-    $controller = $this->entityManager->getFormObject($entity->getEntityTypeId(), $operation);
+    $controller = \Drupal::entityManager()->getFormObject($entity->getEntityTypeId(), $operation);
     $controller->setEntity($entity);
-    $child_form_state = $this->buildChildFormState($controller, $form_state, $entity, $operation);
+    $child_form_state = static::buildChildFormState($controller, $form_state, $entity, $operation);
 
     $child_form = $entity_form;
     $child_form['#ief_parents'] = $entity_form['#parents'];
@@ -234,7 +237,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
    * @return \Drupal\Core\Form\FormStateInterface
    *   Child form state object.
    */
-  protected function buildChildFormState(EntityFormInterface $controller, FormStateInterface $form_state, EntityInterface $entity, $operation) {
+  public static function buildChildFormState(EntityFormInterface $controller, FormStateInterface $form_state, EntityInterface $entity, $operation) {
     $child_form_state = new FormState();
 
     $child_form_state->addBuildInfo('callback_object', $controller);
@@ -268,6 +271,41 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     return $child_form_state;
+  }
+
+  /**
+   * Cleans up the form state for a submitted entity form.
+   *
+   * After field_attach_submit() has run and the form has been closed, the form
+   * state still contains field data in $form_state['field']. Unless that
+   * data is removed, the next form with the same #parents (reopened add form,
+   * for example) will contain data (i.e. uploaded files) from the previous form.
+   *
+   * @param $entity_form
+   *   The entity form.
+   * @param $form_state
+   *   The form state of the parent form.
+   */
+  public static function submitCleanFormState(&$entity_form, FormStateInterface $form_state) {
+    $info = \Drupal::entityManager()->getDefinition($entity_form['#entity_type']);
+    if (!$info->get('field_ui_base_route')) {
+      // The entity type is not fieldable, nothing to cleanup.
+      return;
+    }
+
+    $bundle = $entity_form['#entity']->bundle();
+    $instances = \Drupal::entityManager()->getFieldDefinitions($entity_form['#entity_type'], $bundle);
+    foreach ($instances as $instance) {
+      $field_name = $instance->getName();
+      if (!empty($entity_form[$field_name]['#parents'])) {
+        $parents = $entity_form[$field_name]['#parents'];
+        array_pop($parents);
+        if (!empty($parents)) {
+          $field_state = array();
+          WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
+        }
+      }
+    }
   }
 
 }
