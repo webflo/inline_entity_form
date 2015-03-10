@@ -29,7 +29,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
   protected $entityManager;
 
   /**
-   * ID of entity type managed by this handler
+   * ID of entity type managed by this handler.
    *
    * @var string
    */
@@ -55,10 +55,13 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
    *   Entity manager service.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   Module handler service.
+   * @param string $entity_type_id
+   *   ID of entity type managed by this handler.
    */
-  public function __construct(EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler) {
+  public function __construct(EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler, $entity_type_id) {
     $this->entityManager = $entity_manager;
     $this->moduleHandler = $module_handler;
+    $this->entityTypeId = $entity_type_id;
   }
 
   /**
@@ -67,7 +70,8 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
   public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
       $container->get('entity.manager'),
-      $container->get('module_handler')
+      $container->get('module_handler'),
+      $entity_type->id()
     );
   }
 

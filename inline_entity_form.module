@@ -29,8 +29,6 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
 
   /** @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler */
   $handler = \Drupal::entityManager()->getHandler($target_type, 'inline entity form');
-  // @TODO - could we dynamically figure out entity type?
-  $handler->setEntityTypeId($target_type);
 
   return $handler;
 }
