@@ -138,28 +138,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
   /**
    * {@inheritdoc}
    */
-  public function setEntityTypeId($entity_type_id) {
-    $this->entityTypeId = $entity_type_id;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function entityForm($entity_form, FormStateInterface $form_state) {
-
-    // Assume create form if nothing defined.
-    if (empty($entity_form['#op'])) {
-      $entity_form['#op'] = 'add';
-    }
-
-    if (empty($entity_form['#entity'])) {
-      $entity_form['#entity'] = $this->createEntity($entity_form, $form_state);
-    }
-
-    if ($entity_form['#op'] == 'add') {
-      $entity_form['#title'] = t('Add new @type_singular', array('@type_singular' => $this->labels()['singular']));
-    }
-
     $operation = 'default';
     $controller = $this->entityManager->getFormObject($entity_form['#entity']->getEntityTypeId(), $operation);
     $controller->setEntity($entity_form['#entity']);
@@ -289,40 +268,6 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $child_form_state->setSubmitHandlers($form_state->getSubmitHandlers());
 
     return $child_form_state;
-  }
-
-  /**
-   * "Creates" entity that is being edited/created in inline form.
-   *
-   * Entity will either be created (when creating) or loaded form form state
-   * (when editing).
-   *
-   * @param $form
-   *   Form structure array.
-   * @param FormStateInterface $form_state
-   *   Form state object.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface
-   *   Created entity object.
-   */
-  protected function createEntity($form, FormStateInterface $form_state) {
-    if ($form['#op'] == 'add') {
-      // Create a new entity that will be passed to the form.
-      $ief_settings = $form_state->get(['inline_entity_form', $form['#ief_id']]);
-      if (!empty($ief_settings['form settings']['bundle'])) {
-        $bundle = $ief_settings['form settings']['bundle'];
-      }
-      elseif (!empty($ief_settings['bundle'])) {
-        $bundle = $ief_settings['bundle'];
-      }
-      else {
-        $bundle = reset($ief_settings['settings']['handler_settings']['target_bundles']);
-      }
-      return inline_entity_form_create_entity($form['#entity_type'], $bundle, $form['#parent_language']);
-    }
-    else {
-      return $form_state->get(['inline_entity_form', $form['#ief_id'], 'entities', $form['#ief_row_delta'], 'entity']);
-    }
   }
 
 }

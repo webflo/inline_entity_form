@@ -713,36 +713,6 @@ function inline_entity_form_get_element($form, FormStateInterface $form_state) {
 }
 
 /**
- * Creates a new entity of the given type and bundle.
- *
- * @param $entity_type
- *   Entity type.
- * @param $bundle
- *   Bundle.
- * @param $language
- *   (Optional) The language to set, if the entity has a language key.
- */
-function inline_entity_form_create_entity($entity_type, $bundle, $language = NULL) {
-  $entity_info = \Drupal::entityManager()->getDefinition($entity_type);
-  $bundle_key = $entity_info->getKey('bundle');
-  $default_values = array();
-  // If the bundle key exists, it must always be set on an entity.
-  if (!empty($bundle_key)) {
-    $default_values[$bundle_key] = $bundle;
-  }
-
-  /*
-  // Set the language if we have both a language key and a language value.
-  if (isset($language) && !empty($entity_info['entity keys']['language'])) {
-    $language_key = $entity_info['entity keys']['language'];
-    $default_values[$language_key] = $language;
-  }
-  */
-
-  return entity_create($entity_type, $default_values);
-}
-
-/**
  * Themes the table showing existing entity references in the widget.
  *
  * @param $variables
