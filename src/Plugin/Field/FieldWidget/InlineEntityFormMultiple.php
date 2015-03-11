@@ -499,6 +499,10 @@ class InlineEntityFormMultiple extends WidgetBase {
             '#entity_type' => $settings['target_type'],
             '#bundle' => $this->determineBundle($form_state),
             '#language' => $parent_langcode,
+            // Labels could be overridden in field widget settings. We won't have
+            // access to those in static callbacks (#process, ...) so let's add
+            // them here.
+            '#ief_labels' => $this->labels(),
             // Identifies the IEF widget to which the form belongs.
             '#ief_id' => $this->getIefId(),
             // Used by Field API and controller methods to find the relevant
@@ -664,17 +668,14 @@ class InlineEntityFormMultiple extends WidgetBase {
    *   Form array structure.
    */
   public static function buildEntityFormActions($element) {
-    // TODO Use overrides.
-    $labels =  \Drupal::entityManager()->getHandler($element['#entity_type'], 'inline entity form')->labels();
-
     // Build a delta suffix that's appended to button #name keys for uniqueness.
     $delta = $element['#ief_id'];
     if ($element['#op'] == 'add') {
-      $save_label = t('Create @type_singular', ['@type_singular' => $labels['singular']]);
+      $save_label = t('Create @type_singular', ['@type_singular' => $element['#ief_labels']['singular']]);
     }
     else {
       $delta .= '-' . $element['#ief_row_delta'];
-      $save_label = t('Update @type_singular', ['@type_singular' => $labels['singular']]);
+      $save_label = t('Update @type_singular', ['@type_singular' => $element['#ief_labels']['singular']]);
     }
 
     // Add action submit elements.
