@@ -136,19 +136,9 @@ class InlineEntityForm extends RenderElement implements ContainerFactoryPluginIn
           ->getStorage($element['#entity_type'])
           ->create($values);
       }
-      else {
-        // TODO - this structure relies on stuff from field. Fix it.
-        $element['#entity'] = $form_state->get(['inline_entity_form', $element['#ief_id'], 'entity', $element['#ief_row_delta'], 'entity']);
-      }
     }
 
     $element += $ief_handler->entityForm($element, $form_state);
-
-    // Used by Field API and controller methods to find the relevant
-    // values in $form_state.
-    // TODO - this structure relies on stuff from field. Fix it.
-    //$element['#parents'] = array_merge($element['#parents'], ['entities', $element['#ief_row_delta'], 'form']);
-
     return $element;
   }
 
