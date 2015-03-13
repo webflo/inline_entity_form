@@ -297,6 +297,7 @@ class InlineEntityFormMultiple extends WidgetBase {
             'inline_entity_form' => [
               '#type' => 'inline_entity_form',
               '#op' => $value['form'],
+              '#save_entity' => FALSE,
               // Used by Field API and controller methods to find the relevant
               // values in $form_state.
               '#parents' => array_merge($parents, ['inline_entity_form', 'entities', $key, 'form']),
@@ -497,6 +498,7 @@ class InlineEntityFormMultiple extends WidgetBase {
           'inline_entity_form' => [
             '#type' => 'inline_entity_form',
             '#op' => 'add',
+            '#save_entity' => FALSE,
             '#entity_type' => $settings['target_type'],
             '#bundle' => $this->determineBundle($form_state),
             '#language' => $parent_langcode,

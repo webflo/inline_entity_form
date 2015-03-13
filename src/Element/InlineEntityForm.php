@@ -64,12 +64,20 @@ class InlineEntityForm extends RenderElement implements ContainerFactoryPluginIn
   public function getInfo() {
     $class = get_class($this);
     return [
-      '#language' => LanguageInterface::LANGCODE_DEFAULT,
+      '#language' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
       '#ief_id' => $this->uuid->generate(),
+      // Instance of \Drupal\Core\Entity\EntityInterface. Entity that will be
+      // displayed in entity form. Can be unset if #enatity_type and #bundle
+      // are provided and #op equals 'add'.
       '#entity' => NULL,
       '#entity_type' => NULL,
       '#bundle' => NULL,
       '#op' => 'add',
+      // Will hide entity form's own actions if set to FALSE.
+      '#display_actions' => FALSE,
+      // Will save entity on submit if set to TRUE.
+      '#save_entity' => TRUE,
+      '#ief_element_submit' => [],
       '#process' => [
         [$class, 'processEntityForm'],
       ],
@@ -138,7 +146,7 @@ class InlineEntityForm extends RenderElement implements ContainerFactoryPluginIn
       }
     }
 
-    $element += $ief_handler->entityForm($element, $form_state);
+    $element = $ief_handler->entityForm($element, $form_state);
 
     return $element;
   }
