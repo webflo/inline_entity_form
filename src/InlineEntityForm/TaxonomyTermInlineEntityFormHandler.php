@@ -101,7 +101,7 @@ class TaxonomyTermInlineEntityFormHandler extends EntityInlineEntityFormHandler 
   /**
    * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $entity = $entity_form['#entity'];

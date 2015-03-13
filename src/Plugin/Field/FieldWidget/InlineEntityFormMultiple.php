@@ -316,6 +316,7 @@ class InlineEntityFormMultiple extends WidgetBase {
               '#process' => [
                 ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'processEntityForm'],
                 [get_class($this), 'buildEntityFormActions'],
+                [get_class($this), 'addIefSubmitCallbacks'],
               ]
             ]
           ];
@@ -518,6 +519,7 @@ class InlineEntityFormMultiple extends WidgetBase {
             '#process' => [
               ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'processEntityForm'],
               [get_class($this), 'buildEntityFormActions'],
+              [get_class($this), 'addIefSubmitCallbacks'],
             ],
           ],
         ];
@@ -659,6 +661,17 @@ class InlineEntityFormMultiple extends WidgetBase {
     });
 
     return $items;
+  }
+
+  /**
+   * Adds submit callbacks to the inline entity form.
+   *
+   * @param array $element
+   *   Form array structure.
+   */
+  public static function addIefSubmitCallbacks($element) {
+    $element['#ief_element_submit'][] = [get_called_class(), 'submitSaveEntity'];
+    return $element;
   }
 
   /**
@@ -929,5 +942,44 @@ class InlineEntityFormMultiple extends WidgetBase {
     }
   }
 
+  /**
+   * Marks created/edited entity with "needs save" flag.
+   *
+   * Note that at this point the entity is not yet saved, since the user might
+   * still decide to cancel the parent form.
+   *
+   * @param $entity_form
+   *  The form of the entity being managed inline.
+   * @param $form_state
+   *   The form state of the parent form.
+   */
+  public static function submitSaveEntity($entity_form, FormStateInterface $form_state) {
+    $ief_id = $entity_form['#ief_id'];
+    $entity = $entity_form['#entity'];
+
+    if ($entity_form['#op'] == 'add') {
+      // Determine the correct weight of the new element.
+      $weight = 0;
+      $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+      if (!empty($entities)) {
+        $weight = max(array_keys($entities)) + 1;
+      }
+      // Add the entity to form state, mark it for saving, and close the form.
+      $entities[] = array(
+        'entity' => $entity,
+        '_weight' => $weight,
+        'form' => NULL,
+        'needs_save' => TRUE,
+      );
+      $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
+    }
+    else {
+      $delta = $entity_form['#ief_row_delta'];
+      $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+      $entities[$delta]['entity'] = $entity;
+      $entities[$delta]['needs_save'] = TRUE;
+      $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
+    }
+  }
 }
 

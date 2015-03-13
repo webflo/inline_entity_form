@@ -159,7 +159,7 @@ class CommerceLineItemInlineEntityFormHandler extends EntityInlineEntityFormHand
   /**
    * Overrides EntityInlineEntityFormHandler::entityFormSubmit().
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
     $line_item = $entity_form['#entity'];
     $line_item_values = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
     $line_item->quantity = sprintf("%.2f", $line_item_values['quantity']);
