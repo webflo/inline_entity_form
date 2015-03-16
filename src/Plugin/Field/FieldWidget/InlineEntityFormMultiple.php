@@ -305,6 +305,10 @@ class InlineEntityFormMultiple extends WidgetBase {
               '#entity_type' => $settings['target_type'],
               // Pass the langcode of the parent entity,
               '#language' => $parent_langcode,
+              // Labels could be overridden in field widget settings. We won't have
+              // access to those in static callbacks (#process, ...) so let's add
+              // them here.
+              '#ief_labels' => $this->labels(),
               // Identifies the IEF widget to which the form belongs.
               '#ief_id' => $this->getIefId(),
               // Identifies the table row to which the form belongs.
