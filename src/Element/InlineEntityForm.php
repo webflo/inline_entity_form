@@ -149,22 +149,12 @@ class InlineEntityForm extends RenderElement {
       $submit_attached = TRUE;
     }
 
-    if (!empty($complete_form['actions']['submit'])) {
-      $complete_form['actions']['submit']['#submit'] = empty($complete_form['actions']['submit']['#submit']) ? $submit : array_merge($submit, $complete_form['actions']['submit']['#submit']);
-      $complete_form['actions']['submit']['#ief_submit_all'] = TRUE;
-      $submit_attached = TRUE;
-    }
-
-    if (!empty($complete_form['actions']['publish'])) {
-      $complete_form['actions']['publish']['#submit'] = empty($complete_form['actions']['publish']['#submit']) ? $submit : array_merge($submit, $complete_form['actions']['publish']['#submit']);
-      $complete_form['actions']['publish']['#ief_submit_all'] = TRUE;
-      $submit_attached = TRUE;
-    }
-
-    if (!empty($complete_form['actions']['unpublish'])) {
-      $complete_form['actions']['unpublish']['#submit'] = empty($complete_form['actions']['unpublish']['#submit']) ? $submit : array_merge($submit, $complete_form['actions']['unpublish']['#submit']);
-      $complete_form['actions']['unpublish']['#ief_submit_all'] = TRUE;
-      $submit_attached = TRUE;
+    foreach (['submit', 'publish', 'unpublish'] as $action) {
+      if (!empty($complete_form['actions'][$action])) {
+        $complete_form['actions'][$action]['#submit'] = empty($complete_form['actions'][$action]['#submit']) ? $submit : array_merge($submit, $complete_form['actions'][$action]['#submit']);
+        $complete_form['actions'][$action]['#ief_submit_all'] = TRUE;
+        $submit_attached = TRUE;
+      }
     }
 
     // If we didn't attach submit to one of the most common buttons let's search
@@ -172,7 +162,6 @@ class InlineEntityForm extends RenderElement {
     if (!$submit_attached) {
       static::recurseAttachMainSubmit($complete_form, $submit);
     }
-
   }
 
   /**
