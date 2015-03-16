@@ -723,7 +723,7 @@ class InlineEntityFormMultiple extends WidgetBase {
     // Add submit handlers depending on operation.
     if ($element['#op'] == 'add') {
       $element['actions']['ief_add_save']['#submit'] = [
-        'inline_entity_form_trigger_submit',
+        ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'triggerIefSubmit'],
         'inline_entity_form_close_child_forms',
         'inline_entity_form_close_form',
       ];
@@ -738,7 +738,7 @@ class InlineEntityFormMultiple extends WidgetBase {
       $element['actions']['ief_edit_cancel']['#ief_row_delta'] = $element['#ief_row_delta'];
 
       $element['actions']['ief_edit_save']['#submit'] = [
-        'inline_entity_form_trigger_submit',
+        ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'triggerIefSubmit'],
         'inline_entity_form_close_child_forms',
         [get_called_class(), 'submitCloseRow'],
       ];

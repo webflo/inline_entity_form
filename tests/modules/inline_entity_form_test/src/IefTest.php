@@ -9,13 +9,11 @@ namespace Drupal\inline_entity_form_test;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormSubmitTrait;
 
 /**
  * Tests Inline entity form element.
  */
 class IefTest extends FormBase {
-  use InlineEntityFormSubmitTrait;
 
   /**
    * {@inheritdoc}
@@ -45,9 +43,7 @@ class IefTest extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $this->submitIef($form['inline_entity_form'], $form_state);
-    /** @var \Drupal\Core\Entity\EntityInterface $entity */
-    $entity = $form['inline_entity_form']['#entity'];
+    $entity = $form_state->get(['inline_entity_form', $form['inline_entity_form']['#ief_id'], 'entity']);
     drupal_set_message(t('Created @entity_type @label.', ['@entity_type' => $entity->getEntityType()->getLabel(), '@label' => $entity->label()]));
   }
 

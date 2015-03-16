@@ -224,6 +224,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     // TODO - this is field-only part of the code. Figure out how to refactor.
     if ($child_form_state->get('inline_entity_form')) {
       foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
+        $data['entity'] = $entity_form['#entity'];
         $form_state->set(['inline_entity_form', $id], $data);
       }
     }
