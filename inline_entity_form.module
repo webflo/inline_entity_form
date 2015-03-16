@@ -39,7 +39,7 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
  */
 function inline_entity_form_entity_type_build(array &$entity_types) {
   /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
-  if (!$entity_types['node']->getHandlerClass('inline entity form')) {
+  if (isset($entity_types['node']) && !$entity_types['node']->getHandlerClass('inline entity form')) {
     $entity_types['node']->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
   }
 
