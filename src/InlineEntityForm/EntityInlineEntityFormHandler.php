@@ -149,8 +149,15 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
 
     $entity_form = $controller->buildForm($entity_form, $child_form_state);
 
-    foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
-      $form_state->set(['inline_entity_form', $id], $data);
+    if (!$entity_form['#display_actions']) {
+      unset($entity_form['actions']);
+    }
+
+    // TODO - this is field-only part of the code. Figure out how to refactor.
+    if ($child_form_state->get('inline_entity_form')) {
+      foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
+        $form_state->set(['inline_entity_form', $id], $data);
+      }
     }
 
     $form_state->set('field', $child_form_state->get('field'));
@@ -210,9 +217,18 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $controller->save($child_form, $child_form_state);
     $entity_form['#entity'] = $controller->getEntity();
 
-    foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
-      $form_state->set(['inline_entity_form', $id], $data);
+    if ($entity_form['#save_entity']) {
+      $entity_form['#entity']->save();
     }
+
+    // TODO - this is field-only part of the code. Figure out how to refactor.
+    if ($child_form_state->get('inline_entity_form')) {
+      foreach ($child_form_state->get('inline_entity_form') as $id => $data) {
+        $data['entity'] = $entity_form['#entity'];
+        $form_state->set(['inline_entity_form', $id], $data);
+      }
+    }
+
   }
 
   /**

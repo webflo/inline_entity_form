@@ -11,9 +11,7 @@
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
-use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\inline_entity_form\InlineEntityFormHandlerInterface;
 use Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler;
 
 /**
@@ -41,7 +39,7 @@ function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
  */
 function inline_entity_form_entity_type_build(array &$entity_types) {
   /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
-  if (!$entity_types['node']->getHandlerClass('inline entity form')) {
+  if (isset($entity_types['node']) && !$entity_types['node']->getHandlerClass('inline entity form')) {
     $entity_types['node']->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
   }
 
@@ -217,42 +215,6 @@ function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
 }
 
 /**
- * Implements hook_form_alter().
- *
- * Adds the IEF submit function and the #ief_submit_all flag to the main submit
- * button of a form that contains an IEF widget.
- * Needs to be done in an alter hook because many forms add the submit button
- * after inline_entity_form_field_widget_form() is called.
- */
-function inline_entity_form_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  $inline_entity_form = $form_state->get('inline_entity_form');
-  if (!empty($inline_entity_form)) {
-    $submit = array_merge(array('inline_entity_form_trigger_submit'), $form['#submit']);
-
-    if (!empty($form['submit'])) {
-      $form['submit']['#submit'] = array_merge($submit, $form['submit']['#submit']);
-      $form['submit']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['submit'])) {
-      $form['actions']['submit']['#submit'] = array_merge($submit, $form['actions']['submit']['#submit']);
-      $form['actions']['submit']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['publish'])) {
-      $form['actions']['publish']['#submit'] = array_merge($submit, $form['actions']['publish']['#submit']);
-      $form['actions']['publish']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['unpublish'])) {
-      $form['actions']['unpublish']['#submit'] = array_merge($submit, $form['actions']['unpublish']['#submit']);
-      $form['actions']['unpublish']['#ief_submit_all'] = TRUE;
-    }
-
-  }
-}
-
-/**
  * Updates entity weights based on their weights in the widget.
  */
 function inline_entity_form_update_row_weights($element, FormStateInterface $form_state, $form) {
@@ -307,7 +269,7 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
       'wrapper' => 'inline-entity-form-' . $reference_form['#ief_id'],
     ),
     '#submit' => array(
-      'inline_entity_form_trigger_submit',
+      ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'triggerIefSubmit'],
       'inline_entity_form_close_form',
     ),
   );
@@ -412,55 +374,6 @@ function inline_entity_form_reference_form_submit($reference_form, FormStateInte
     'needs_save' => FALSE,
   );
   $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
-}
-
-/**
- * Button #submit callback: Triggers submission of entity forms.
- *
- * @param $form
- *   The complete parent form.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_trigger_submit($form, FormStateInterface $form_state) {
-  $triggered_element = $form_state->getTriggeringElement();
-  if (!empty($triggered_element['#ief_submit_all'])) {
-    // The parent form was submitted, process all IEFs and their children.
-    inline_entity_form_submit($form, $form_state);
-  }
-  else {
-    // A specific entity form was submitted, process it and all of its children.
-    $array_parents = $triggered_element['#array_parents'];
-    $array_parents = array_slice($array_parents, 0, -2);
-    $element = NestedArray::getValue($form, $array_parents);
-    inline_entity_form_submit($element, $form_state);
-  }
-}
-
-/**
- * Submits entity forms by calling their #ief_element_submit callbacks.
- *
- * #ief_element_submit is the submit version of #element_validate.
- *
- * @param $elements
- *   An array of form elements containing entity forms.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_submit($elements, FormStateInterface $form_state) {
-  // Recurse through all children.
-  foreach (element_children($elements) as $key) {
-    if (!empty($elements[$key])) {
-      inline_entity_form_submit($elements[$key], $form_state);
-    }
-  }
-
-  // If there are callbacks on this level, run them.
-  if (!empty($elements['#ief_element_submit'])) {
-    foreach ($elements['#ief_element_submit'] as $function) {
-      $function($elements, $form_state);
-    }
-  }
 }
 
 /**
