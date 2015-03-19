@@ -134,7 +134,7 @@ class InlineEntityForm extends RenderElement {
   }
 
   /**
-   * Tries to attach submit IEF callabacks to main submit buttons.
+   * Tries to attach submit IEF callbacks to main submit buttons.
    *
    * @param array $complete_form
    *   Form structure.
