@@ -145,8 +145,6 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $controller->setEntity($entity_form['#entity']);
     $child_form_state = $this->buildChildFormState($controller, $form_state, $entity_form['#entity'], $operation);
 
-    $entity_form['#ief_parents'] = $entity_form['#parents'];
-
     $entity_form = $controller->buildForm($entity_form, $child_form_state);
 
     if (!$entity_form['#display_actions']) {
