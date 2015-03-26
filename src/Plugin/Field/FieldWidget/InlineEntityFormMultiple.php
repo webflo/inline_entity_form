@@ -286,7 +286,6 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     $element['#element_validate'] = array('inline_entity_form_update_row_weights');
     // Add the required element marker & validation.
     if ($element['#required']) {
-      $element['#title'] .= ' ' . _theme('form_required_marker', array('element' => $element));
       $element['#element_validate'][] = 'inline_entity_form_required_field';
     }
 
