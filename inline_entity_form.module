@@ -517,13 +517,13 @@ function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $fo
  */
 function inline_entity_form_required_field($element, FormStateInterface $form_state, $form) {
   $ief_id = $element['#ief_id'];
-  $has_children = !empty($form_state['inline_entity_form'][$ief_id]['entities']);
-  $form_open = !empty($form_state['inline_entity_form'][$ief_id]['form']);
+  $has_children = !empty($form_state->get('inline_entity_form')[$ief_id]['entities']);
+  $form_open = !empty($form_state->get('inline_entity_form')[$ief_id]['form']);
   // If the add new / add existing form is open, its validation / submission
   // will do the job instead (either by preventing the parent form submission
   // or by adding a new referenced entity).
   if (!$has_children && !$form_open) {
-    $instance = $form_state['inline_entity_form'][$ief_id]['instance'];
+    $instance = $form_state->get('inline_entity_form')[$ief_id]['instance'];
     $form_state->setError($element, t('!name field is required.', array('!name' => $instance['label'])));
   }
 }
@@ -679,7 +679,7 @@ function inline_entity_form_field_widget_error($element, $error) {
  * easier storage. Moving the form elements into fieldsets during form building
  * would break up that hierarchy, so it's not an option for Field API fields.
  * Therefore, we wait until the pre_render stage, where any changes we make
- * affect presentation only and aren't reflected in $form_state['values'].
+ * affect presentation only and aren't reflected in $form_state->getValues().
  */
 function inline_entity_form_pre_render_add_fieldset_markup($form) {
   $sort = array();

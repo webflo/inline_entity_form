@@ -303,7 +303,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
    * Cleans up the form state for a submitted entity form.
    *
    * After field_attach_submit() has run and the form has been closed, the form
-   * state still contains field data in $form_state['field']. Unless that
+   * state still contains field data in $form_state->get('field'). Unless that
    * data is removed, the next form with the same #parents (reopened add form,
    * for example) will contain data (i.e. uploaded files) from the previous form.
    *
