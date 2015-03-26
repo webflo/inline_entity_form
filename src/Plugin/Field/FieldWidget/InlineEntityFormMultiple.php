@@ -469,7 +469,9 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
-        if ($element['#entity_type'] != $settings['target_type'] || $element['#bundle'] != $bundle) {
+        $parent_entity_type = $form_state->getStorage()['form_display']->getTargetEntityTypeId();
+        $parent_bundle = $form_state->getStorage()['form_display']->getTargetBundle();
+        if ($parent_entity_type != $settings['target_type'] || $parent_bundle != $bundle) {
           $form_state->get('inline_entity_form')[$this->getIefId()]['form'] = 'add';
           $form_state->get('inline_entity_form')[$this->getIefId()]['form settings'] = array(
             'bundle' => $bundle,
