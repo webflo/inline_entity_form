@@ -85,7 +85,7 @@ class InlineEntityFormSingle extends WidgetBase {
       ),
     );
     // The single widget doesn't offer autocomplete functionality.
-    if ($form_state['widget']['type'] == 'inline_entity_form_single') {
+    if ($form_state->get('widget')['type'] == 'inline_entity_form_single') {
       $form['allow_existing']['#access'] = FALSE;
       $form['match_operator']['#access'] = FALSE;
     }
