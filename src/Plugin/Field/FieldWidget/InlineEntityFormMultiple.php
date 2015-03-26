@@ -362,7 +362,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
               '#ief_row_delta' => $key,
               // Add the pre_render callback that powers the #fieldset form element key,
               // which moves the element to the specified fieldset without modifying its
-              // position in $form_state['values'].
+              // position in $form_state->get('values').
               '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
               '#process' => [
                 ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'processEntityForm'],
@@ -470,8 +470,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
         if ($element['#entity_type'] != $settings['target_type'] || $element['#bundle'] != $bundle) {
-          $form_state['inline_entity_form'][$this->getIefId()]['form'] = 'add';
-          $form_state['inline_entity_form'][$this->getIefId()]['form settings'] = array(
+          $form_state->get('inline_entity_form')[$this->getIefId()]['form'] = 'add';
+          $form_state->get('inline_entity_form')[$this->getIefId()]['form settings'] = array(
             'bundle' => $bundle,
           );
         }
@@ -563,7 +563,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
             '#parents' => array_merge($parents, ['inline_entity_form']),
             // Add the pre_render callback that powers the #fieldset form element key,
             // which moves the element to the specified fieldset without modifying its
-            // position in $form_state['values'].
+            // position in $form_state->get('values').
             '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
             // We need to add our own #process callback that adds action elements,
             // but still keep default callback which makes sure everything will
@@ -601,7 +601,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
           '#parent_language' => $parent_langcode,
           // Add the pre_render callback that powers the #fieldset form element key,
           // which moves the element to the specified fieldset without modifying its
-          // position in $form_state['values'].
+          // position in $form_state->get('values').
           '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
         );
 
