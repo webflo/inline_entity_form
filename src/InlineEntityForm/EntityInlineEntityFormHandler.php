@@ -177,18 +177,30 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
    * {@inheritdoc}
    */
   public static function entityFormValidate($entity_form, FormStateInterface $form_state) {
-    /** @var \Drupal\Core\Entity\EntityInterface $entity */
-    $entity = $entity_form['#entity'];
+    // We only do full entity validation if entire entity is to be saved, which
+    // means it should be complete. Don't validate for other requests (like file
+    // uploads, etc.).
+    $triggering_element = $form_state->getTriggeringElement();
+    if (!empty($triggering_element['#ief_submit_all'])) {
+      /** @var \Drupal\Core\Entity\EntityInterface $entity */
+      $entity = $entity_form['#entity'];
+      $operation = 'default';
 
-    /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $form_display */
-    $form_display = \Drupal::entityManager()->getStorage('entity_form_display')->load($entity->getEntityTypeId() . '.' . $entity->bundle() . '.default');
-    $form_display->validateFormValues($entity, $entity_form, $form_state);
+      $controller = \Drupal::entityManager()
+        ->getFormObject($entity->getEntityTypeId(), $operation);
+      $child_form_state = static::buildChildFormState($controller, $form_state, $entity, $operation);
+      $controller->validate($entity_form, $child_form_state);
+
+      foreach($child_form_state->getErrors() as $name => $message) {
+        $form_state->setErrorByName($name, $message);
+      }
+    }
 
     // Unset un-triggered conditional fields errors
     $errors = $form_state->getErrors();
     $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
     if ($errors && !empty($conditional_fields_untriggered_dependents)) {
-      foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
+      foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents) {
         if (!empty($untriggered_dependents['errors'])) {
           foreach (array_keys($untriggered_dependents['errors']) as $key) {
             unset($errors[$key]);
