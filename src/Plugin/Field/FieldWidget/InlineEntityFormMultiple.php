@@ -296,13 +296,14 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     );
 
     // Get the fields that should be displayed in the table.
-    $fields = $this->iefHandler->tableFields($settings['handler_settings']['target_bundles']);
+    $target_bundles = isset($settings['handler_settings']['target_bundles']) ? $settings['handler_settings']['target_bundles'] : array();
+    $fields = $this->iefHandler->tableFields($target_bundles);
     $context = array(
       'parent_entity_type' => $this->fieldDefinition->entity_type,
       'parent_bundle' => $this->fieldDefinition->bundle,
       'field_name' => $this->fieldDefinition->getName(),
       'entity_type' => $settings['target_type'],
-      'allowed_bundles' => $settings['handler_settings']['target_bundles'],
+      'allowed_bundles' => $target_bundles,
     );
     \Drupal::moduleHandler()->alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
@@ -463,8 +464,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     // field is required and empty, and there's only one allowed bundle).
     $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
     if (empty($entities)) {
-      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->settings['allow_existing']) {
-        $bundle = reset($settings['handler_settings']['target_bundles']);
+      if (count($target_bundles) == 1 && $this->fieldDefinition->isRequired() && !$this->settings['allow_existing']) {
+        $bundle = reset($target_bundles);
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
@@ -487,12 +488,12 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       );
 
       // The user is allowed to create an entity of at least one bundle.
-      if (count($settings['handler_settings']['target_bundles'])) {
+      if (count($target_bundles)) {
         // Let the user select the bundle, if multiple are available.
-        if (count($settings['handler_settings']['target_bundles']) > 1) {
+        if (count($target_bundles) > 1) {
           $bundles = array();
           foreach ($this->entityManager->getBundleInfo($settings['target_type']) as $bundle_name => $bundle_info) {
-            if (in_array($bundle_name, $settings['handler_settings']['target_bundles'])) {
+            if (in_array($bundle_name, $target_bundles)) {
               $bundles[$bundle_name] = $bundle_info['label'];
             }
           }
@@ -505,7 +506,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         else {
           $element['actions']['bundle'] = array(
             '#type' => 'value',
-            '#value' => reset($settings['handler_settings']['target_bundles']),
+            '#value' => reset($target_bundles),
           );
         }
 
@@ -579,7 +580,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         // contains no values. That way the user is forced to create an entity.
         if (!$this->settings['allow_existing'] && $this->fieldDefinition->isRequired()
           && empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])
-          && count($settings['handler_settings']['target_bundles']) == 1
+          && count($target_bundles) == 1
         ) {
           $element['form']['inline_entity_form']['#process'][] = [get_class($this), 'hideCancel'];
         }
