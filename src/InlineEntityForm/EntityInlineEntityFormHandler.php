@@ -328,7 +328,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
         array_pop($parents);
         if (!empty($parents)) {
           $field_state = array();
-          WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
+          WidgetBase::setWidgetState($parents, $field_name, $form_state, $field_state);
         }
       }
     }
