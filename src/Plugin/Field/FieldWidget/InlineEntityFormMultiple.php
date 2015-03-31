@@ -201,8 +201,11 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
    * {@inheritdoc}
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
-    $settings = $this->getFieldSettings();
+    if ($this->isDefaultValueWidget($form_state)) {
+      return $element;
+    }
 
+    $settings = $this->getFieldSettings();
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $this->initializeIefController();
 
@@ -619,6 +622,11 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
    * {@inheritdoc}
    */
   public function extractFormValues(FieldItemListInterface $items, array $form, FormStateInterface $form_state) {
+    if ($this->isDefaultValueWidget($form_state)) {
+      $items->filterEmptyItems();
+      return;
+    }
+
     $this->initializeIefController();
     $field_name = $this->fieldDefinition->getName();
 
