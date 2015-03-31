@@ -9,9 +9,13 @@ namespace Drupal\inline_entity_form\Plugin\Field\FieldWidget;
 
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\SortArray;
+use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Multiple value widget.
@@ -25,7 +29,7 @@ use Drupal\Core\Form\FormStateInterface;
  *   multiple_values = true
  * )
  */
-class InlineEntityFormMultiple extends WidgetBase {
+class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPluginInterface {
 
   /**
    * The entity manager.
@@ -41,7 +45,47 @@ class InlineEntityFormMultiple extends WidgetBase {
    */
   protected $iefHandler;
 
+  /**
+   * The inline entity form id.
+   *
+   * @var string
+   */
   protected $iefId;
+
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, EntityManagerInterface $entity_manager) {
+    parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings);
+    $this->entityManager = $entity_manager;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $plugin_id,
+      $plugin_definition,
+      $configuration['field_definition'],
+      $configuration['settings'],
+      $configuration['third_party_settings'],
+      $container->get('entity.manager')
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __sleep() {
+    $keys = array_diff(parent::__sleep(), array('iefHandler'));
+    return $keys;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __wakeup() {
+    parent::__wakeup();
+    $this->initializeIefController();
+  }
 
   /**
    * {@inheritdoc}
@@ -157,7 +201,6 @@ class InlineEntityFormMultiple extends WidgetBase {
    * {@inheritdoc}
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
-    $this->entityManager = \Drupal::entityManager();
     $settings = $this->getFieldSettings();
 
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
