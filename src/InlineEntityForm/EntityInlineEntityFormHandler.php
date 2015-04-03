@@ -290,7 +290,7 @@ class EntityInlineEntityFormHandler implements InlineEntityFormHandlerInterface 
     $child_form_state->setRebuildInfo($rebuild_info);
 
     $child_form_state->set('inline_entity_form', $form_state->get('inline_entity_form'));
-    $child_form_state->set('langcode', $entity->langcode->value);
+    $child_form_state->set('langcode', $entity->language()->getId());
 
     $child_form_state->set('field', $form_state->get('field'));
     $child_form_state->setTriggeringElement($form_state->getTriggeringElement());
