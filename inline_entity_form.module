@@ -7,21 +7,12 @@
  * (for example, order -> line items), where the child entities are never
  * managed outside the parent form.
  */
+
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
-use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
-
-/**
- * Flag indicating that the entity should be unlinked.
- */
-define('IEF_ENTITY_UNLINK', 1);
-
-/**
- * Flag indicating that the entity should be unlinked and deleted.
- */
-define('IEF_ENTITY_UNLINK_DELETE', 2);
+use Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler;
 
 /**
  * Returns the Inline Entity Form controller for the passed-in reference field.
@@ -33,55 +24,30 @@ define('IEF_ENTITY_UNLINK_DELETE', 2);
  *   An instantiated controller object, or FALSE if none found.
  */
 function inline_entity_form_get_controller(FieldDefinitionInterface $instance) {
-  $field = $instance->getFieldStorageDefinition();
-  $instance_settings = $instance->getSettings();
-  $field_settings = $field->getSettings();
+  $target_type = $instance->getFieldStorageDefinition()->getSetting('target_type');
 
-  $form_display = entity_get_form_display($instance->entity_type, $instance->bundle, 'default');
-  $widget_settings = $form_display->getComponent($instance->field_name)['settings'];
+  /** @var \Drupal\inline_entity_form\InlineEntityFormHandlerInterface $handler */
+  $handler = \Drupal::entityManager()->getHandler($target_type, 'inline entity form');
 
-  return \Drupal::service("plugin.manager.inline_entity_form")->createInstance('entity:' . $field_settings['target_type'], $widget_settings);
-
-  /*
-  $field = field_info_field($instance['field_name']);
-  $type_settings = $instance['widget']['settings']['type_settings'];
-  $ief_settings = inline_entity_form_settings($field, $instance);
-  $entity_info = \Drupal::entityManager()->getDefinition($ief_settings['entity_type']);
-  // The current entity type is not supported, execution can't continue.
-  if (!isset($entity_info['inline entity form'])) {
-    return FALSE;
-  }
-
-  return new $entity_info['inline entity form']['controller']($ief_settings['entity_type'], $type_settings);
-  */
+  return $handler;
 }
 
 /**
  * Implements hook_entity_info_alter().
+ *
+ * @TODO - Add handlers for other core entity types.
  */
-function inline_entity_form_entity_info_alter(&$entity_info) {
-  /**
-   * @var \Drupal\Core\Entity\EntityType[] $entity_info
-   */
-  $entity_info['node']->setFormClass('inline entity form', '\Drupal\inline_entity_form\Plugin\InlineEntityForm\NodeInlineEntityFormController');
+function inline_entity_form_entity_type_build(array &$entity_types) {
+  /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+  if (isset($entity_types['node']) && !$entity_types['node']->getHandlerClass('inline entity form')) {
+    $entity_types['node']->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\NodeInlineEntityFormHandler');
+  }
 
-  /*
-  if (isset($entity_info['taxonomy_term'])) {
-    $entity_info['taxonomy_term']['inline entity form'] = array(
-      'controller' => 'TaxonomyTermInlineEntityFormController',
-    );
+  foreach ($entity_types as &$entity_type) {
+    if (!$entity_type->getHandlerClass('inline entity form')) {
+      $entity_type->setHandlerClass('inline entity form', '\Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler');
+    }
   }
-  if (isset($entity_info['commerce_product'])) {
-    $entity_info['commerce_product']['inline entity form'] = array(
-      'controller' => 'CommerceProductInlineEntityFormController',
-    );
-  }
-  if (isset($entity_info['commerce_line_item'])) {
-    $entity_info['commerce_line_item']['inline entity form'] = array(
-      'controller' => 'CommerceLineItemInlineEntityFormController',
-    );
-  }
-  */
 }
 
 /**
@@ -122,10 +88,15 @@ function inline_entity_form_entity_delete(EntityInterface $entity) {
   list(,, $bundle) = entity_extract_ids($type, $entity);
   foreach (field_info_instances($type, $bundle) as $field_name => $instance) {
     if (strpos($instance['widget']['type'], 'inline_entity_form') === 0) {
+      $widget = \Drupal::entityManager()
+        ->getStorage('entity_form_display')
+        ->load($entity->getEntityTypeId() . '.' . $entity->bundle() . '.default')
+        ->getComponent($field_name);
+
       $controller = inline_entity_form_get_controller($instance);
 
       // The controller specified that referenced entities should be deleted.
-      if ($controller && $controller->getSetting('delete_references')) {
+      if ($controller && $widget['settings']['delete_references']) {
         $items = field_get_items($type, $entity, $field_name);
         if ($items) {
           $field = field_info_field($field_name);
@@ -244,42 +215,6 @@ function inline_entity_form_field_widget_properties_alter(&$widget, $context) {
 }
 
 /**
- * Implements hook_form_alter().
- *
- * Adds the IEF submit function and the #ief_submit_all flag to the main submit
- * button of a form that contains an IEF widget.
- * Needs to be done in an alter hook because many forms add the submit button
- * after inline_entity_form_field_widget_form() is called.
- */
-function inline_entity_form_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  $inline_entity_form = $form_state->get('inline_entity_form');
-  if (!empty($inline_entity_form)) {
-    $submit = array_merge(array('inline_entity_form_trigger_submit'), $form['#submit']);
-
-    if (!empty($form['submit'])) {
-      $form['submit']['#submit'] = array_merge($submit, $form['submit']['#submit']);
-      $form['submit']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['submit'])) {
-      $form['actions']['submit']['#submit'] = array_merge($submit, $form['actions']['submit']['#submit']);
-      $form['actions']['submit']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['publish'])) {
-      $form['actions']['publish']['#submit'] = array_merge($submit, $form['actions']['publish']['#submit']);
-      $form['actions']['publish']['#ief_submit_all'] = TRUE;
-    }
-
-    if (!empty($form['actions']['unpublish'])) {
-      $form['actions']['unpublish']['#submit'] = array_merge($submit, $form['actions']['unpublish']['#submit']);
-      $form['actions']['unpublish']['#ief_submit_all'] = TRUE;
-    }
-
-  }
-}
-
-/**
  * Updates entity weights based on their weights in the widget.
  */
 function inline_entity_form_update_row_weights($element, FormStateInterface $form_state, $form) {
@@ -288,191 +223,6 @@ function inline_entity_form_update_row_weights($element, FormStateInterface $for
   // in the form state.
   foreach (element_children($element['entities']) as $key) {
     $form_state->set(['inline_entity_form', $ief_id, 'entities', $key, '_weight'], $element['entities'][$key]['delta']['#value']);
-  }
-}
-
-/**
- * Wraps and returns the entity form provided by the passed-in controller.
- *
- * @param $controller
- *   The inline entity form controller.
- * @param $entity_form
- *   The form array that will receive the entity form.
- * @param $form_state
- *   The form state of the parent form.
- *
- * @return
- *   The form array containing the embedded entity form.
- */
-function inline_entity_form_entity_form($controller, $entity_form, FormStateInterface $form_state) {
-  $labels = $controller->labels();
-  // Build a deta suffix that's appended to button #name keys for uniqueness.
-  $delta = $entity_form['#ief_id'];
-  if ($entity_form['#op'] == 'edit') {
-    $delta .= '-' . $entity_form['#ief_row_delta'];
-    $save_label = t('Update @type_singular', array('@type_singular' => $labels['singular']));
-    $entity_form['#entity'] = $form_state->get(['inline_entity_form', $entity_form['#ief_id'], 'entities', $entity_form['#ief_row_delta'], 'entity']);
-  }
-  elseif ($entity_form['#op'] == 'add') {
-    // Create a new entity that will be passed to the form.
-    $ief_settings = $form_state->get(['inline_entity_form', $entity_form['#ief_id']]);
-    if (isset($ief_settings['form settings']['bundle'])) {
-      $bundle = $ief_settings['form settings']['bundle'];
-    }
-    if (empty($bundle) && isset($ief_settings['bundle'])) {
-      $bundle = $ief_settings['bundle'];
-    }
-    if (empty($bundle)) {
-      $bundle = reset($ief_settings['settings']['handler_settings']['target_bundles']);
-    }
-    $entity_form['#entity'] = inline_entity_form_create_entity($entity_form['#entity_type'], $bundle, $entity_form['#parent_language']);
-    $entity_form['#title'] = t('Add new @type_singular', array('@type_singular' => $labels['singular']));
-    $save_label = t('Create @type_singular', array('@type_singular' => $labels['singular']));
-  }
-
-  // Retrieve the form provided by the controller.
-  $entity_form = $controller->entityForm($entity_form, $form_state);
-
-  // Add the actions
-  $entity_form['actions'] = array(
-    '#type' => 'container',
-    '#weight' => 100,
-  );
-  $entity_form['actions']['ief_' . $entity_form['#op'] . '_save'] = array(
-    '#type' => 'submit',
-    '#value' => $save_label,
-    '#name' => 'ief-' . $entity_form['#op'] . '-submit-' . $delta,
-    '#limit_validation_errors' => array($entity_form['#parents']),
-    '#attributes' => array('class' => array('ief-entity-submit')),
-    '#ajax' => array(
-      'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $entity_form['#ief_id'],
-    ),
-  );
-  $entity_form['actions']['ief_' . $entity_form['#op'] . '_cancel'] = array(
-    '#type' => 'submit',
-    '#value' => t('Cancel'),
-    '#name' => 'ief-' . $entity_form['#op'] . '-cancel-' . $delta,
-    '#limit_validation_errors' => array(),
-    '#ajax' => array(
-      'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $entity_form['#ief_id'],
-    ),
-  );
-
-  // Add the appropriate submit handlers and their related data.
-  if ($entity_form['#op'] == 'add') {
-    $entity_form['actions']['ief_add_save']['#submit'] = array(
-      'inline_entity_form_trigger_submit',
-      'inline_entity_form_close_child_forms',
-      'inline_entity_form_close_form',
-    );
-    $entity_form['actions']['ief_add_cancel']['#submit'] = array(
-      'inline_entity_form_close_child_forms',
-      'inline_entity_form_close_form',
-      'inline_entity_form_cleanup_form_state',
-    );
-  }
-  else {
-    $entity_form['actions']['ief_edit_save']['#ief_row_delta'] = $entity_form['#ief_row_delta'];
-    $entity_form['actions']['ief_edit_cancel']['#ief_row_delta'] = $entity_form['#ief_row_delta'];
-
-    $entity_form['actions']['ief_edit_save']['#submit'] = array(
-      'inline_entity_form_trigger_submit',
-      'inline_entity_form_close_child_forms',
-      'inline_entity_form_close_row_form',
-    );
-    $entity_form['actions']['ief_edit_cancel']['#submit'] = array(
-      'inline_entity_form_close_child_forms',
-      'inline_entity_form_close_row_form',
-      'inline_entity_form_cleanup_row_form_state',
-    );
-  }
-
-  $entity_form['#element_validate'][] = 'inline_entity_form_entity_form_validate';
-  $entity_form['#ief_element_submit'][] = 'inline_entity_form_entity_form_submit';
-  // Add the pre_render callback that powers the #fieldset form element key,
-  // which moves the element to the specified fieldset without modifying its
-  // position in $form_state['values'].
-  $entity_form['#pre_render'][] = 'inline_entity_form_pre_render_add_fieldset_markup';
-
-  // Allow other modules to alter the form.
-  \Drupal::moduleHandler()->alter('inline_entity_form_entity_form', $entity_form, $form_state);
-
-  return $entity_form;
-}
-
-/**
- * Validates an entity form.
- *
- * @param $entity_form
- *  The form of the entity being managed inline.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_entity_form_validate(&$entity_form, FormStateInterface $form_state) {
-  $ief_id = $entity_form['#ief_id'];
-  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-  // Instantiate the controller and validate the form.
-  $controller = inline_entity_form_get_controller($instance);
-  $controller->entityFormValidate($entity_form, $form_state);
-
-  // Unset untriggered conditional fields errors
-  $errors = $form_state->getErrors();
-  $conditional_fields_untriggered_dependents = $form_state->get('conditional_fields_untriggered_dependents');
-  if ($errors && !empty($conditional_fields_untriggered_dependents)) {
-    foreach ($conditional_fields_untriggered_dependents as $untriggered_dependents ) {
-      if (!empty($untriggered_dependents['errors'])) {
-        foreach (array_keys($untriggered_dependents['errors']) as $key) {
-          unset($errors[$key]);
-        }
-      }
-    }
-  }
-}
-
-/**
- * Submits an entity form.
- *
- * Note that at this point the entity is not yet saved, since the user might
- * still decide to cancel the parent form.
- *
- * @param $entity_form
- *  The form of the entity being managed inline.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_entity_form_submit($entity_form, FormStateInterface $form_state) {
-  $ief_id = $entity_form['#ief_id'];
-  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-  // Instantiate the controller and validate the form.
-  $controller = inline_entity_form_get_controller($instance);
-  $controller->entityFormSubmit($entity_form, $form_state);
-  $entity = $entity_form['#entity'];
-  inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
-
-  if ($entity_form['#op'] == 'add') {
-    // Determine the correct weight of the new element.
-    $weight = 0;
-    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
-    if (!empty($entities)) {
-      $weight = max(array_keys($entities)) + 1;
-    }
-    // Add the entity to form state, mark it for saving, and close the form.
-    $entities[] = array(
-      'entity' => $entity,
-      '_weight' => $weight,
-      'form' => NULL,
-      'needs_save' => TRUE,
-    );
-    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
-  }
-  else {
-    $delta = $entity_form['#ief_row_delta'];
-    $entities = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
-    $entities[$delta]['entity'] = $entity;
-    $entities[$delta]['needs_save'] = TRUE;
-    $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
   }
 }
 
@@ -519,7 +269,7 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
       'wrapper' => 'inline-entity-form-' . $reference_form['#ief_id'],
     ),
     '#submit' => array(
-      'inline_entity_form_trigger_submit',
+      ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'triggerIefSubmit'],
       'inline_entity_form_close_form',
     ),
   );
@@ -627,143 +377,6 @@ function inline_entity_form_reference_form_submit($reference_form, FormStateInte
 }
 
 /**
- * Wraps and returns the remove form provided by the passed-in controller.
- *
- * @param $controller
- *   The inline entity form controller.
- * @param $remove_form
- *   The form array that will receive the entity form.
- * @param $form_state
- *   The form state of the parent form.
- *
- * @return
- *   The form array containing the embedded remove form.
- */
-function inline_entity_form_remove_form($controller, $remove_form, FormStateInterface $form_state) {
-  // Build a deta suffix that's appended to button #name keys for uniqueness.
-  $delta = $remove_form['#ief_id'] . '-' . $remove_form['#ief_row_delta'];
-
-  // Retrieve the form provided by the controller.
-  $remove_form = $controller->removeForm($remove_form, $form_state);
-  // Add the actions
-  $remove_form['actions'] = array(
-    '#type' => 'container',
-    '#weight' => 100,
-  );
-  $remove_form['actions']['ief_remove_confirm'] = array(
-    '#type' => 'submit',
-    '#value' => t('Remove'),
-    '#name' => 'ief-remove-confirm-' . $delta,
-    '#limit_validation_errors' => array($remove_form['#parents']),
-    '#ajax' => array(
-      'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $remove_form['#ief_id'],
-    ),
-    '#submit' => array('inline_entity_form_remove_confirm'),
-    '#ief_row_delta' => $remove_form['#ief_row_delta'],
-  );
-  $remove_form['actions']['ief_remove_cancel'] = array(
-    '#type' => 'submit',
-    '#value' => t('Cancel'),
-    '#name' => 'ief-remove-cancel-' . $delta,
-    '#limit_validation_errors' => array(),
-    '#ajax' => array(
-      'callback' => 'inline_entity_form_get_element',
-      'wrapper' => 'inline-entity-form-' . $remove_form['#ief_id'],
-    ),
-    '#submit' => array('inline_entity_form_close_row_form'),
-    '#ief_row_delta' => $remove_form['#ief_row_delta'],
-  );
-
-  return $remove_form;
-}
-
-/**
- * Remove form submit callback.
- *
- * The row is identified by #ief_row_delta stored on the triggering
- * element.
- * This isn't an #element_validate callback to avoid processing the
- * remove form when the main form is submitted.
- *
- * @param $form
- *   The complete parent form.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_remove_confirm($form, FormStateInterface $form_state) {
-  $form_state->setRebuild();
-  $element = inline_entity_form_get_element($form, $form_state);
-  $ief_id = $element['#ief_id'];
-  $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
-  $remove_form = $element['entities'][$delta]['form'];
-
-  // Instantiate the controller and submit the form.
-  $controller = inline_entity_form_get_controller($instance);
-  $status = $controller->removeFormSubmit($remove_form, $form_state);
-  if ($status == IEF_ENTITY_UNLINK_DELETE) {
-    $entity_id = $remove_form['#entity']->id();
-    $delete = $form_state->get(['inline_entity_form', $ief_id, 'delete']);
-    $delete['delete'][] = $entity_id;
-    $form_state->set(['inline_entity_form', $ief_id, 'delete'], $delete);
-    $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta], NULL);
-  }
-  elseif ($status == IEF_ENTITY_UNLINK) {
-    $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta], NULL);
-  }
-}
-
-/**
- * Button #submit callback: Triggers submission of entity forms.
- *
- * @param $form
- *   The complete parent form.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_trigger_submit($form, FormStateInterface $form_state) {
-  $triggered_element = $form_state->getTriggeringElement();
-  if (!empty($triggered_element['#ief_submit_all'])) {
-    // The parent form was submitted, process all IEFs and their children.
-    inline_entity_form_submit($form, $form_state);
-  }
-  else {
-    // A specific entity form was submitted, process it and all of its children.
-    $array_parents = $triggered_element['#array_parents'];
-    $array_parents = array_slice($array_parents, 0, -2);
-    $element = NestedArray::getValue($form, $array_parents);
-    inline_entity_form_submit($element, $form_state);
-  }
-}
-
-/**
- * Submits entity forms by calling their #ief_element_submit callbacks.
- *
- * #ief_element_submit is the submit version of #element_validate.
- *
- * @param $elements
- *   An array of form elements containing entity forms.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_submit($elements, FormStateInterface $form_state) {
-  // Recurse through all children.
-  foreach (element_children($elements) as $key) {
-    if (!empty($elements[$key])) {
-      inline_entity_form_submit($elements[$key], $form_state);
-    }
-  }
-
-  // If there are callbacks on this level, run them.
-  if (!empty($elements['#ief_element_submit'])) {
-    foreach ($elements['#ief_element_submit'] as $function) {
-      $function($elements, $form_state);
-    }
-  }
-}
-
-/**
  * Button #submit callback: Opens a form in the IEF widget.
  *
  * The form is shown below the entity table, at the bottom of the widget.
@@ -819,7 +432,7 @@ function inline_entity_form_close_form($form, FormStateInterface $form_state) {
  */
 function inline_entity_form_cleanup_form_state($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
-  inline_entity_form_cleanup_entity_form_state($element['form'], $form_state);
+  EntityInlineEntityFormHandler::submitCleanFormState($element['form']['inline_entity_form'], $form_state);
 }
 
 /**
@@ -840,25 +453,6 @@ function inline_entity_form_open_row_form($form, FormStateInterface $form_state)
 
   $form_state->setRebuild();
   $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta, 'form'], $form_state->getTriggeringElement()['#ief_row_form']);
-}
-
-/**
- * Button #submit callback: Closes a row form in the IEF widget.
- *
- * @param $form
- *   The complete parent form.
- * @param $form_state
- *   The form state of the parent form.
- *
- * @see inline_entity_form_open_row_form().
- */
-function inline_entity_form_close_row_form($form, FormStateInterface $form_state) {
-  $element = inline_entity_form_get_element($form, $form_state);
-  $ief_id = $element['#ief_id'];
-  $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
-
-  $form_state->setRebuild();
-  $form_state->set(['inline_entity_form', $ief_id, 'entities', $delta, 'form'], NULL);
 }
 
 /**
@@ -914,8 +508,8 @@ function inline_entity_form_close_all_forms($elements, FormStateInterface $form_
 function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $form_state) {
   $element = inline_entity_form_get_element($form, $form_state);
   $delta = $form_state->getTriggeringElement()['#ief_row_delta'];
-  $entity_form = $element['entities'][$delta]['form'];
-  inline_entity_form_cleanup_entity_form_state($entity_form, $form_state);
+  $entity_form = $element['entities'][$delta]['form']['inline_entity_form'];
+  EntityInlineEntityFormHandler::submitCleanFormState($entity_form, $form_state);
 }
 
 /**
@@ -935,41 +529,6 @@ function inline_entity_form_required_field($element, FormStateInterface $form_st
 }
 
 /**
- * Cleans up the form state for a submitted entity form.
- *
- * After field_attach_submit() has run and the form has been closed, the form
- * state still contains field data in $form_state['field']. Unless that
- * data is removed, the next form with the same #parents (reopened add form,
- * for example) will contain data (i.e. uploaded files) from the previous form.
- *
- * @param $entity_form
- *   The entity form.
- * @param $form_state
- *   The form state of the parent form.
- */
-function inline_entity_form_cleanup_entity_form_state($entity_form, FormStateInterface $form_state) {
-  $info = \Drupal::entityManager()->getDefinition($entity_form['#entity_type']);
-  if (!$info->get('field_ui_base_route')) {
-    // The entity type is not fieldable, nothing to cleanup.
-    return;
-  }
-
-  $bundle = $entity_form['#entity']->bundle();
-  $instances = \Drupal::entityManager()->getFieldDefinitions($entity_form['#entity_type'], $bundle);
-  foreach ($instances as $instance) {
-    $field_name = $instance->getName();
-    if (!empty($entity_form[$field_name]['#parents'])) {
-      $parents = $entity_form[$field_name]['#parents'];
-      array_pop($parents);
-      if (is_array($parents)) {
-        $field_state = array();
-        WidgetBase::getWidgetState($parents, $field_name, $form_state, $field_state);
-      }
-    }
-  }
-}
-
-/**
  * Returns an IEF widget nearest to the triggering element.
  */
 function inline_entity_form_get_element($form, FormStateInterface $form_state) {
@@ -985,36 +544,6 @@ function inline_entity_form_get_element($form, FormStateInterface $form_state) {
   }
 
   return $element;
-}
-
-/**
- * Creates a new entity of the given type and bundle.
- *
- * @param $entity_type
- *   Entity type.
- * @param $bundle
- *   Bundle.
- * @param $language
- *   (Optional) The language to set, if the entity has a language key.
- */
-function inline_entity_form_create_entity($entity_type, $bundle, $language = NULL) {
-  $entity_info = \Drupal::entityManager()->getDefinition($entity_type);
-  $bundle_key = $entity_info->getKey('bundle');
-  $default_values = array();
-  // If the bundle key exists, it must always be set on an entity.
-  if (!empty($bundle_key)) {
-    $default_values[$bundle_key] = $bundle;
-  }
-
-  /*
-  // Set the language if we have both a language key and a language value.
-  if (isset($language) && !empty($entity_info['entity keys']['language'])) {
-    $language_key = $entity_info['entity keys']['language'];
-    $default_values[$language_key] = $language;
-  }
-  */
-
-  return entity_create($entity_type, $default_values);
 }
 
 /**

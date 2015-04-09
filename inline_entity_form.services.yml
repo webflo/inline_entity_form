@@ -1,4 +1,0 @@
-services:
-  plugin.manager.inline_entity_form:
-    class: Drupal\inline_entity_form\InlineEntityFormPluginManager
-    arguments: ['@container.namespaces', '@cache.discovery', '@language_manager', '@module_handler']

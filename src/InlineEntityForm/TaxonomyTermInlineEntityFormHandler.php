@@ -1,25 +1,32 @@
 <?php
 
 /**
- * @file
- * Defines the inline entity form controller for Taxonomy terms.
+ * Contains \Drupal\inline_entity_form\InlineEntityForm\TaxonomyTermInlineEntityFormHandler.
  */
 
-class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormController {
+namespace Drupal\inline_entity_form\InlineEntityForm;
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Taxonomy term inline form handler.
+ */
+class TaxonomyTermInlineEntityFormHandler extends EntityInlineEntityFormHandler {
 
   /**
-   * Overrides EntityInlineEntityFormController::labels().
+   * {@inheritdoc}
    */
   public function labels() {
-    $labels = array(
+    $labels = [
       'singular' => t('term'),
       'plural' => t('terms'),
-    );
+    ];
     return $labels;
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::tableFields().
+   * Overrides EntityInlineEntityFormHandler::tableFields().
    *
    * We can't use the parent class method because the taxonomy term metadata
    * wrapper doesn't have a property that matches the entity bundle key.
@@ -28,7 +35,7 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   public function tableFields($bundles) {
     $fields = array();
 
-    $info = \Drupal::entityManager()->getDefinition($this->entityType);
+    $info = $this->entityManager->getDefinition($this->entityTypeId);
     $metadata = entity_get_property_info($this->entityType);
 
     $label_key = $info['entity_keys']['label'];
@@ -49,9 +56,9 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityForm().
+   * {@inheritdoc}
    */
-  public function entityForm($entity_form, &$form_state) {
+  public function entityForm($entity_form, FormStateInterface $form_state) {
     $term = $entity_form['#entity'];
     $extra_fields = field_info_extra_fields('taxonomy_term', $term->vocabulary_machine_name, 'form');
 
@@ -91,11 +98,10 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
     return $entity_form;
   }
 
-
   /**
-   * Overrides EntityInlineEntityFormController::entityFormSubmit().
+   * {@inheritdoc}
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface $form_state) {
     parent::entityFormSubmit($entity_form, $form_state);
 
     $entity = $entity_form['#entity'];
@@ -109,13 +115,6 @@ class TaxonomyTermInlineEntityFormController extends EntityInlineEntityFormContr
     // Separate the description and format.
     $entity->format = $entity->description['format'];
     $entity->description = $entity->description['value'];
-  }
-
-  /**
-   * Overrides EntityInlineEntityFormController::save().
-   */
-  public function save($entity, $context) {
-    taxonomy_term_save($entity);
   }
 
 }

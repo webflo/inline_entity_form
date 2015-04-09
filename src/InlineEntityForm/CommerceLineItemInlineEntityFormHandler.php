@@ -5,10 +5,18 @@
  * Defines the inline entity form controller for Commerce Line Items.
  */
 
-class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormController {
+namespace Drupal\inline_entity_form\InlineEntityForm;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Commerce line item inline entity form handler.
+ *
+ * @TODO - this needs to be ported. Not in a working state ATM.
+ */
+class CommerceLineItemInlineEntityFormHandler extends EntityInlineEntityFormHandler {
 
   /**
-   * Overrides EntityInlineEntityFormController::tableFields().
+   * Overrides EntityInlineEntityFormHandler::tableFields().
    */
   public function tableFields($bundles) {
     $fields = array();
@@ -39,7 +47,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::defaultSettings().
+   * Overrides EntityInlineEntityFormHandler::defaultSettings().
    */
   public function defaultSettings() {
     $defaults = parent::defaultSettings();
@@ -52,7 +60,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::settingsForm().
+   * Overrides EntityInlineEntityFormHandler::settingsForm().
    */
   public function settingsForm($field, $instance) {
     $form = parent::settingsForm($field, $instance);
@@ -65,7 +73,7 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityForm().
+   * Overrides EntityInlineEntityFormHandler::entityForm().
    */
   public function entityForm($entity_form, &$form_state) {
     $line_item = $entity_form['#entity'];
@@ -126,11 +134,11 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityFormValidate().
+   * Overrides EntityInlineEntityFormHandler::entityFormValidate().
    *
    * @todo Remove once Commerce gets a quantity #element_validate function.
    */
-  public function entityFormValidate($entity_form, &$form_state) {
+  public static function entityFormValidate($entity_form, FormStateInterface $form_state) {
     $line_item = $entity_form['#entity'];
 
     $parents_path = implode('][', $entity_form['#parents']);
@@ -149,9 +157,9 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
   }
 
   /**
-   * Overrides EntityInlineEntityFormController::entityFormSubmit().
+   * Overrides EntityInlineEntityFormHandler::entityFormSubmit().
    */
-  public function entityFormSubmit(&$entity_form, &$form_state) {
+  public static function entityFormSubmit(&$entity_form, FormStateInterface &$form_state) {
     $line_item = $entity_form['#entity'];
     $line_item_values = NestedArray::getValue($form_state['values'], $entity_form['#parents']);
     $line_item->quantity = sprintf("%.2f", $line_item_values['quantity']);
@@ -178,19 +186,6 @@ class CommerceLineItemInlineEntityFormController extends EntityInlineEntityFormC
     }
     // Set the updated data array to the total price.
     $wrapper->commerce_total->data = $unit_price['data'];
-  }
-
-  /**
-   * Overrides EntityInlineEntityFormController::removeForm().
-   */
-  public function removeForm($remove_form, &$form_state) {
-    // EntityInlineEntityFormController::removeForm uses the entity label
-    // in the confirmation message, but line items don't have any.
-    $remove_form['message'] = array(
-      '#markup' => '<div>' . t('Are you sure you want to remove this line item?') . '</div>',
-    );
-
-    return $remove_form;
   }
 
   /**
