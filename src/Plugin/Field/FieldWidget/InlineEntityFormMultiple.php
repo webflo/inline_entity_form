@@ -280,13 +280,14 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
           }
         }
       }
+
+      $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
     }
 
     // Build the "Multiple value" widget.
     $element['#element_validate'] = array('inline_entity_form_update_row_weights');
     // Add the required element marker & validation.
     if ($element['#required']) {
-      $element['#title'] .= ' ' . _theme('form_required_marker', array('element' => $element));
       $element['#element_validate'][] = 'inline_entity_form_required_field';
     }
 
@@ -297,22 +298,23 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     );
 
     // Get the fields that should be displayed in the table.
-    $fields = $this->iefHandler->tableFields($settings['handler_settings']['target_bundles']);
+    $target_bundles = isset($settings['handler_settings']['target_bundles']) ? $settings['handler_settings']['target_bundles'] : array();
+    $fields = $this->iefHandler->tableFields($target_bundles);
     $context = array(
       'parent_entity_type' => $this->fieldDefinition->entity_type,
       'parent_bundle' => $this->fieldDefinition->bundle,
       'field_name' => $this->fieldDefinition->getName(),
       'entity_type' => $settings['target_type'],
-      'allowed_bundles' => $settings['handler_settings']['target_bundles'],
+      'allowed_bundles' => $target_bundles,
     );
     \Drupal::moduleHandler()->alter('inline_entity_form_table_fields', $fields, $context);
     $element['entities']['#table_fields'] = $fields;
 
-    $items_count = count($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']));
+    $entities_count = $items_count = count($entities);
     if ($items_count < 10) {
       $items_count = 10;
     }
-    foreach ($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']) as $key => $value) {
+    foreach ($entities as $key => $value) {
       if (!isset($value['entity'])) {
         continue;
       }
@@ -362,7 +364,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
               '#ief_row_delta' => $key,
               // Add the pre_render callback that powers the #fieldset form element key,
               // which moves the element to the specified fieldset without modifying its
-              // position in $form_state['values'].
+              // position in $form_state->get('values').
               '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
               '#process' => [
                 ['\Drupal\inline_entity_form\Element\InlineEntityForm', 'processEntityForm'],
@@ -443,11 +445,10 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       }
     }
 
-    $entity_count = count($form_state->get(['inline_entity_form', $this->getIefId(), 'entities']));
     if ($cardinality > 1) {
       // Add a visual cue of cardinality count.
       $message = t('You have added @entities_count out of @cardinality_count allowed @label.', array(
-        '@entities_count' => $entity_count,
+        '@entities_count' => $entities_count,
         '@cardinality_count' => $cardinality,
         '@label' => $labels['plural'],
       ));
@@ -456,24 +457,27 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       );
     }
     // Do not return the rest of the form if cardinality count has been reached.
-    if ($cardinality > 0 && $entity_count == $cardinality) {
+    if ($cardinality > 0 && $entities_count == $cardinality) {
       return $element;
     }
 
+    $target_bundles_count = count($target_bundles);
+
     // Try to open the add form (if it's the only allowed action, the
     // field is required and empty, and there's only one allowed bundle).
-    $entities = $form_state->get(['inline_entity_form', $this->getIefId(), 'entities']);
     if (empty($entities)) {
-      if (count($settings['handler_settings']['target_bundles']) == 1 && $this->fieldDefinition->isRequired() && !$this->settings['allow_existing']) {
-        $bundle = reset($settings['handler_settings']['target_bundles']);
+      if ($target_bundles_count == 1 && $this->fieldDefinition->isRequired() && !$this->settings['allow_existing']) {
+        $bundle = reset($target_bundles);
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
-        if ($element['#entity_type'] != $settings['target_type'] || $element['#bundle'] != $bundle) {
-          $form_state['inline_entity_form'][$this->getIefId()]['form'] = 'add';
-          $form_state['inline_entity_form'][$this->getIefId()]['form settings'] = array(
+        $parent_entity_type = $form_state->getStorage()['form_display']->getTargetEntityTypeId();
+        $parent_bundle = $form_state->getStorage()['form_display']->getTargetBundle();
+        if ($parent_entity_type != $settings['target_type'] || $parent_bundle != $bundle) {
+          $form_state->set(['inline_entity_form', $this->getIefId(), 'form'], 'add');
+          $form_state->set(['inline_entity_form', $this->getIefId(), 'form settings'], array(
             'bundle' => $bundle,
-          );
+          ));
         }
       }
     }
@@ -488,12 +492,12 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       );
 
       // The user is allowed to create an entity of at least one bundle.
-      if (count($settings['handler_settings']['target_bundles'])) {
+      if ($target_bundles_count) {
         // Let the user select the bundle, if multiple are available.
-        if (count($settings['handler_settings']['target_bundles']) > 1) {
+        if ($target_bundles_count > 1) {
           $bundles = array();
           foreach ($this->entityManager->getBundleInfo($settings['target_type']) as $bundle_name => $bundle_info) {
-            if (in_array($bundle_name, $settings['handler_settings']['target_bundles'])) {
+            if (in_array($bundle_name, $target_bundles)) {
               $bundles[$bundle_name] = $bundle_info['label'];
             }
           }
@@ -506,7 +510,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         else {
           $element['actions']['bundle'] = array(
             '#type' => 'value',
-            '#value' => reset($settings['handler_settings']['target_bundles']),
+            '#value' => reset($target_bundles),
           );
         }
 
@@ -563,7 +567,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
             '#parents' => array_merge($parents, ['inline_entity_form']),
             // Add the pre_render callback that powers the #fieldset form element key,
             // which moves the element to the specified fieldset without modifying its
-            // position in $form_state['values'].
+            // position in $form_state->get('values').
             '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
             // We need to add our own #process callback that adds action elements,
             // but still keep default callback which makes sure everything will
@@ -579,13 +583,13 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         // Hide the cancel button if the reference field is required but
         // contains no values. That way the user is forced to create an entity.
         if (!$this->settings['allow_existing'] && $this->fieldDefinition->isRequired()
-          && empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])
-          && count($settings['handler_settings']['target_bundles']) == 1
+          && empty($entities)
+          && $target_bundles_count == 1
         ) {
           $element['form']['inline_entity_form']['#process'][] = [get_class($this), 'hideCancel'];
         }
       }
-      elseif ($form_state->get('inline_entity_form')[$this->getIefId()]['form'] == 'ief_add_existing') {
+      elseif ($form_state->get(['inline_entity_form', $this->getIefId(), 'form']) == 'ief_add_existing') {
         // TODO - autocomplete seems to be broken and needs to be fixed.
         $element['form'] = array(
           '#type' => 'fieldset',
@@ -601,7 +605,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
           '#parent_language' => $parent_langcode,
           // Add the pre_render callback that powers the #fieldset form element key,
           // which moves the element to the specified fieldset without modifying its
-          // position in $form_state['values'].
+          // position in $form_state->get('values').
           '#pre_render' => ['inline_entity_form_pre_render_add_fieldset_markup'],
         );
 
@@ -610,7 +614,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
 
       // No entities have been added. Remove the outer fieldset to reduce
       // visual noise caused by having two titles.
-      if (empty($form_state->get('inline_entity_form')[$this->getIefId()]['entities'])) {
+      if (empty($entities)) {
         $element['#type'] = 'container';
       }
     }
