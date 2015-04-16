@@ -517,8 +517,10 @@ function inline_entity_form_cleanup_row_form_state($form, FormStateInterface $fo
  */
 function inline_entity_form_required_field($element, FormStateInterface $form_state, $form) {
   $ief_id = $element['#ief_id'];
-  $has_children = !empty($form_state->get(['inline_entity_form', $ief_id, 'entities']));
-  $form_open = !empty($form_state->get(['inline_entity_form', $ief_id, 'form']));
+  $children = $form_state->get(['inline_entity_form', $ief_id, 'entities']);
+  $has_children = !empty($children);
+  $form = $form_state->get(['inline_entity_form', $ief_id, 'form']);
+  $form_open = !empty($form);
   // If the add new / add existing form is open, its validation / submission
   // will do the job instead (either by preventing the parent form submission
   // or by adding a new referenced entity).
