@@ -137,7 +137,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       ),
     );
     // The single widget doesn't offer autocomplete functionality.
-    if ($form_state->get('widget')['type'] == 'inline_entity_form_single') {
+    if ($form_state->get(['widget', 'type']) == 'inline_entity_form_single') {
       $form['allow_existing']['#access'] = FALSE;
       $form['match_operator']['#access'] = FALSE;
     }
@@ -471,8 +471,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
-        $parent_entity_type = $form_state->getStorage()['form_display']->getTargetEntityTypeId();
-        $parent_bundle = $form_state->getStorage()['form_display']->getTargetBundle();
+        $parent_entity_type = $form_state->getStorage('form_display')->getTargetEntityTypeId();
+        $parent_bundle = $form_state->getStorage('form_display')->getTargetBundle();
         if ($parent_entity_type != $settings['target_type'] || $parent_bundle != $bundle) {
           $form_state->set(['inline_entity_form', $this->getIefId(), 'form'], 'add');
           $form_state->set(['inline_entity_form', $this->getIefId(), 'form settings'], array(
