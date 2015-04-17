@@ -13,7 +13,6 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
-use Drupal\Core\Render\RendererInterface;
 use Drupal\inline_entity_form\InlineEntityForm\EntityInlineEntityFormHandler;
 
 /**
@@ -557,6 +556,7 @@ function inline_entity_form_get_element($form, FormStateInterface $form_state) {
  *   Contains the form element data from $element['entities'].
  */
 function theme_inline_entity_form_entity_table($variables) {
+  $renderer = \Drupal::service('renderer');
   $form = $variables['form'];
   $entity_type = $form['#entity_type'];
   $fields = $form['#table_fields'];
@@ -607,7 +607,7 @@ function theme_inline_entity_form_entity_table($variables) {
     $cells = array();
     if ($has_tabledrag) {
       $cells[] = array('data' => '', 'class' => array('ief-tabledrag-handle'));
-      $cells[] = RendererInterface::render($form[$key]['delta']);
+      $cells[] = $renderer->render($form[$key]['delta']);
       $row_classes[] = 'draggable';
     }
     // Add a special class to rows that have a form underneath, to allow
@@ -623,14 +623,14 @@ function theme_inline_entity_form_entity_table($variables) {
     }
 
     // Add the buttons belonging to the "Operations" column.
-    $cells[] = RendererInterface::render($form[$key]['actions']);
+    $cells[] = $renderer->render($form[$key]['actions']);
     // Create the row.
     $rows[] = array('data' => $cells, 'class' => $row_classes);
 
     // If the current entity array specifies a form, output it in the next row.
     if (!empty($form[$key]['form'])) {
       $row = array(
-        array('data' => RendererInterface::render($form[$key]['form']), 'colspan' => count($fields) + 1),
+        array('data' => $renderer->render($form[$key]['form']), 'colspan' => count($fields) + 1),
       );
       $rows[] = array('data' => $row, 'class' => array('ief-row-form'), 'no_striping' => TRUE);
     }
@@ -665,7 +665,7 @@ function theme_inline_entity_form_entity_table($variables) {
       '#tabledrag' => $tabledrag,
     );
 
-    return RendererInterface::render($table);
+    return $renderer->render($table);
   }
 }
 
