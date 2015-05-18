@@ -2,13 +2,15 @@
 
 /**
  * @file
- * Contains \Drupal\inline_entity_form\AutocompleteController.
+ * Contains \Drupal\inline_entity_form\Controller\AutocompleteController.
  */
 
-namespace Drupal\inline_entity_form;
-use Drupal\Component\Utility\String;
+namespace Drupal\inline_entity_form\Controller;
+
+use Drupal\Component\Utility\Html;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityReferenceSelection\SelectionPluginManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,16 +21,28 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
  */
 class AutocompleteController implements ContainerInjectionInterface {
 
-  /** @var \Drupal\Core\Entity\EntityManagerInterface  */
+  /**
+   * Entity manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityManagerInterface
+   */
   protected $entityManager;
 
   /**
-   * Constructsa a new AutocompleteController object.
+   * Selection manager service.
+   *
+   * @var \Drupal\Core\Entity\EntityReferenceSelection\SelectionPluginManagerInterface
+   */
+  protected $selectionManager;
+
+  /**
+   * Constructs a new AutocompleteController object.
    *
    * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
    */
-  public function __construct(EntityManagerInterface $entity_manager) {
+  public function __construct(EntityManagerInterface $entity_manager, SelectionPluginManagerInterface $selection_manager) {
     $this->entityManager = $entity_manager;
+    $this->selectionManager = $selection_manager;
   }
 
   /**
@@ -36,7 +50,8 @@ class AutocompleteController implements ContainerInjectionInterface {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity.manager')
+      $container->get('entity.manager'),
+      $container->get('plugin.manager.entity_reference_selection')
     );
   }
 
@@ -52,9 +67,8 @@ class AutocompleteController implements ContainerInjectionInterface {
 
     $field = $fields[$field_name];
     $storage = $field->getFieldStorageDefinition();
-    $settings = $storage->getSettings();
     $controller = inline_entity_form_get_controller($field);
-    $widget = \Drupal::entityManager()
+    $widget = $this->entityManager
       ->getStorage('entity_form_display')
       ->load($entity_type_id . '.' . $bundle . '.default')
       ->getComponent($field_name);
@@ -66,20 +80,9 @@ class AutocompleteController implements ContainerInjectionInterface {
     }
 
     $results = array();
-    if ($field->getType() == 'commerce_product_reference') {
-      $match_operator = strtolower($widget['settings']['match_operator']);
-      $products = commerce_product_match_products($field, $storage, $string, $match_operator, array(), 10, TRUE);
-
-      // Loop through the products and convert them into autocomplete output.
-      foreach ($products as $product_id => $data) {
-        $results[] = t('@label (!entity_id)', array('@label' => $data['title'], '!entity_id' => $product_id));
-      }
-    }
-    elseif ($field->getType() == 'entity_reference') {
-      /** @var \Drupal\entity_reference\Plugin\Type\SelectionPluginManager $selection_manager */
-      $selection_manager = \Drupal::service('plugin.manager.entity_reference.selection');
-      /** @var \Drupal\entity_reference\Plugin\Type\Selection\SelectionInterface $handler */
-      $handler = $selection_manager->getSelectionHandler($field);
+    if ($field->getType() == 'entity_reference') {
+      /** @var \Drupal\Core\Entity\EntityReferenceSelection\SelectionInterface $handler */
+      $handler = $this->selectionManager->getSelectionHandler($field);
       $entity_labels = $handler->getReferenceableEntities($string, $widget['settings']['match_operator'], 10);
 
       foreach ($entity_labels as $bundle => $labels) {
@@ -94,7 +97,7 @@ class AutocompleteController implements ContainerInjectionInterface {
     $matches = array();
     foreach ($results as $result) {
       // Strip things like starting/trailing white spaces, line breaks and tags.
-      $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(String::decodeEntities(strip_tags($result)))));
+      $key = preg_replace('/\s\s+/', ' ', str_replace("\n", '', trim(Html::decodeEntities(strip_tags($result)))));
       $matches[] = ['value' => $key, 'label' => '<div class="reference-autocomplete">' . $result . '</div>'];
     }
 

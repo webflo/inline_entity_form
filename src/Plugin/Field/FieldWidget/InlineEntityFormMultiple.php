@@ -590,7 +590,6 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         }
       }
       elseif ($form_state->get(['inline_entity_form', $this->getIefId(), 'form']) == 'ief_add_existing') {
-        // TODO - autocomplete seems to be broken and needs to be fixed.
         $element['form'] = array(
           '#type' => 'fieldset',
           '#attributes' => array('class' => array('ief-form', 'ief-form-bottom')),

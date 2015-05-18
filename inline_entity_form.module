@@ -249,7 +249,7 @@ function inline_entity_form_reference_form($controller, $reference_form, &$form_
     '#type' => 'textfield',
     '#title' => t('@label', array('@label' => ucwords($labels['singular']))),
     '#autocomplete_route_name' => 'inline_entity_form.autocomplete',
-    '#autocomplete_route_parameters' => ['entity_type_id' => $instance->entity_type, 'field_name' => $instance->field_name, 'bundle' => $instance->bundle],
+    '#autocomplete_route_parameters' => ['entity_type_id' => $instance->getTargetEntityTypeId(), 'field_name' => $instance->getName(), 'bundle' => $instance->getTargetBundle()],
     '#element_validate' => array('_inline_entity_form_autocomplete_validate'),
     '#required' => TRUE,
     '#maxlength' => 255,
