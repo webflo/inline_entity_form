@@ -301,8 +301,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     $target_bundles = isset($settings['handler_settings']['target_bundles']) ? $settings['handler_settings']['target_bundles'] : array();
     $fields = $this->iefHandler->tableFields($target_bundles);
     $context = array(
-      'parent_entity_type' => $this->fieldDefinition->entity_type,
-      'parent_bundle' => $this->fieldDefinition->bundle,
+      'parent_entity_type' => $this->fieldDefinition->getTargetEntityTypeId(),
+      'parent_bundle' => $this->fieldDefinition->getTargetBundle(),
       'field_name' => $this->fieldDefinition->getName(),
       'entity_type' => $settings['target_type'],
       'allowed_bundles' => $target_bundles,
@@ -471,8 +471,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
 
         // The parent entity type and bundle must not be the same as the inline
         // entity type and bundle, to prevent recursion.
-        $parent_entity_type = $form_state->getStorage('form_display')->getTargetEntityTypeId();
-        $parent_bundle = $form_state->getStorage('form_display')->getTargetBundle();
+        $parent_entity_type = $this->fieldDefinition->getTargetEntityTypeId();
+        $parent_bundle =  $this->fieldDefinition->getTargetBundle();
         if ($parent_entity_type != $settings['target_type'] || $parent_bundle != $bundle) {
           $form_state->set(['inline_entity_form', $this->getIefId(), 'form'], 'add');
           $form_state->set(['inline_entity_form', $this->getIefId(), 'form settings'], array(
@@ -1040,4 +1040,3 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     }
   }
 }
-
