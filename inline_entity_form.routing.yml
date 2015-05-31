@@ -1,7 +1,7 @@
 inline_entity_form.autocomplete:
   path: inline_entity_form/autocomplete/{entity_type_id}/{field_name}/{bundle}
   defaults:
-    _controller: 'Drupal\inline_entity_form\AutocompleteController::autocomplete'
+    _controller: '\Drupal\inline_entity_form\Controller\AutocompleteController::autocomplete'
     _title: 'Inline Entity Form Autocomplete'
   requirements:
     _access: 'TRUE'
