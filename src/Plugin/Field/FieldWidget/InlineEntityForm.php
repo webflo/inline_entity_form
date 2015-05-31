@@ -2,41 +2,43 @@
 
 /**
  * @file
- * Contains \Drupal\inline_entity_form\Plugin\Field\FieldWidget\InlineEntityFormMultiple.
+ * Contains \Drupal\inline_entity_form\Plugin\Field\FieldWidget\InlineEntityForm.
  */
 
 namespace Drupal\inline_entity_form\Plugin\Field\FieldWidget;
 
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\SortArray;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\StringTranslation\TranslationInterface;
 
 /**
- * Multiple value widget.
+ * Inline entity form widget.
  *
  * @FieldWidget(
- *   id = "inline_entity_form_multiple",
- *   label = @Translation("Inline entity form - Multiple value"),
+ *   id = "inline_entity_form",
+ *   label = @Translation("Inline entity form"),
  *   field_types = {
  *     "entity_reference"
+ *   },
+ *   settings = {
+ *     "allow_existing" = FALSE,
+ *     "match_operator" = "CONTAINS",
+ *     "delete_references" = FALSE,
+ *     "override_labels" = FALSE,
+ *     "label_singular" = "",
+ *     "label_plural" = ""
  *   },
  *   multiple_values = true
  * )
  */
-class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPluginInterface {
-
-  /**
-   * The entity manager.
-   *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
-   */
-  protected $entityManager;
+class InlineEntityForm extends WidgetBase implements ContainerFactoryPluginInterface {
 
   /**
    * The inline entity from handler.
@@ -46,15 +48,30 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
   protected $iefHandler;
 
   /**
+   * The entity manager.
+   *
+   * @var \Drupal\Core\Entity\EntityManagerInterface
+   */
+  protected $entityManager;
+
+  /**
+   * The entity manager.
+   *
+   * @var \Drupal\Core\StringTranslation\TranslationInterface
+   */
+  protected $string_translation;
+
+  /**
    * The inline entity form id.
    *
    * @var string
    */
   protected $iefId;
 
-  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, EntityManagerInterface $entity_manager) {
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, EntityManagerInterface $entity_manager, TranslationInterface $string_translation) {
     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings);
     $this->entityManager = $entity_manager;
+    $this->string_translation = $string_translation;
   }
 
   /**
@@ -67,7 +84,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       $configuration['field_definition'],
       $configuration['settings'],
       $configuration['third_party_settings'],
-      $container->get('entity.manager')
+      $container->get('entity.manager'),
+      $container->get('string_translation')
     );
   }
 
@@ -88,6 +106,20 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
   }
 
   /**
+   * @param mixed $iefId
+   */
+  public function setIefId($iefId) {
+    $this->iefId = $iefId;
+  }
+
+  /**
+   * @return mixed
+   */
+  public function getIefId() {
+    return $this->iefId;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public static function defaultSettings() {
@@ -99,6 +131,43 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       "label_singular" => "",
       "label_plural" => "",
     );
+  }
+
+  function initializeIefController() {
+    if (!isset($this->iefHandler)) {
+      $this->iefHandler = inline_entity_form_get_controller($this->fieldDefinition);
+    }
+  }
+
+  /**
+   * Returns an array of entity type labels (singular, plural) fit to be
+   * included in the UI text.
+   *
+   * base one of the widgets out of the other one. We could use a trait if that
+   * won't be possible.
+   *
+   * @return array
+   *   Array containing two values:
+   *     - singular: label for singular form,
+   *     - plural: label for plural form.
+   */
+  protected function labels() {
+    // The admin has specified the exact labels that should be used.
+    if ($this->settings && $this->settings['override_labels']) {
+      $labels = array();
+      foreach($this->settings as $key => $value){
+        // Recovering the configuration associated with labels if have a value.
+        if(preg_match('/^label_/', $key) && $value){
+          $label_options = substr($key, strlen('label_'));
+          $labels[$label_options] = $value;
+        }
+      }
+      return $labels;
+    }
+    else {
+      $this->initializeIefController();
+      return $this->iefHandler->labels();
+    }
   }
 
   /**
@@ -113,7 +182,8 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
    *   The definition of the reference field instance.
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
-    $labels = $this->labels();
+    $this->initializeIefController();
+    $labels = $this->iefHandler->labels();
     $states_prefix = 'instance[widget][settings][type_settings]';
 
     $element['allow_existing'] = array(
@@ -175,26 +245,6 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     );
 
     return $element;
-  }
-
-  /**
-   * @param mixed $iefId
-   */
-  public function setIefId($iefId) {
-    $this->iefId = $iefId;
-  }
-
-  /**
-   * @return mixed
-   */
-  public function getIefId() {
-    return $this->iefId;
-  }
-
-  function initializeIefController() {
-    if (!isset($this->iefHandler)) {
-      $this->iefHandler = inline_entity_form_get_controller($this->fieldDefinition);
-    }
   }
 
   /**
@@ -295,6 +345,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       '#tree' => TRUE,
       '#theme' => 'inline_entity_form_entity_table',
       '#entity_type' => $settings['target_type'],
+      '#element' => array('cardinality' => $cardinality),
     );
 
     // Get the fields that should be displayed in the table.
@@ -621,6 +672,7 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
     return $element;
   }
 
+
   /**
    * {@inheritdoc}
    */
@@ -945,33 +997,9 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       $delete['delete'][] = $entity_id;
       $form_state->set(['inline_entity_form', $element['#ief_id'], 'delete'], $delete);
       $form_state->set(['inline_entity_form', $element['#ief_id'], 'entities', $delta], NULL);
-    }
-  }
-
-  /**
-   * Returns an array of entity type labels (singular, plural) fit to be
-   * included in the UI text.
-   *
-   * @TODO - This could be shared with InlineEntityFormSingle. Let's see if we
-   * base one of the widgets out of the other one. We could use a trait if that
-   * won't be possible.
-   *
-   * @return array
-   *   Array containing two values:
-   *     - singular: label for singular form,
-   *     - plural: label for plural form.
-   */
-  protected function labels() {
-    // The admin has specified the exact labels that should be used.
-    if ($this->settings['override_labels']) {
-      return [
-        'singular' => $this->settings['label_singular'],
-        'plural' => $this->settings['label_plural'],
-      ];
-    }
-    else {
-      $this->initializeIefController();
-      return $this->iefHandler->labels();
+      if ($form_values['delete'] == '1') {
+        $entity->delete();
+      }
     }
   }
 
@@ -1037,5 +1065,26 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
       $entities[$delta]['needs_save'] = TRUE;
       $form_state->set(['inline_entity_form', $ief_id, 'entities'], $entities);
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsSummary() {
+    $summary = array();
+
+    $entity_custom_label = $this->labels();
+
+    $summary[] = t('Allow users to add existing @entity: @allow_existing', array('@entity' => $this->string_translation->formatPlural(count($entity_custom_label), $entity_custom_label['singular'], $entity_custom_label['plural']),'@allow_existing' => ($this->getSetting('allow_existing')) ? t('Yes') : t('No')));
+    $summary[] = t('Autocomplete matching: @match_operator', array('@match_operator' => $this->getSetting('match_operator')));
+    $summary[] = t('Delete referenced entity when the parent entity is deleted: @delete_references', array('@delete_references' => ($this->getSetting('delete_references')) ? t('Yes') : t('No')));
+    $summary[] = t('Override labels: @override_labels', array('@override_labels' => ($this->getSetting('override_labels')) ? t('Yes') : t('No')));
+
+    if($this->getSetting('override_labels')){
+      $summary[] = t('Singular label: @label_singular', array('@label_singular' => $this->getSetting('label_singular')));
+      $summary[] = t('Plural label: @label_plural', array('@label_plural' => $this->getSetting('label_plural')));
+    }
+
+    return $summary;
   }
 }
