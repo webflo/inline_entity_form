@@ -526,9 +526,8 @@ function inline_entity_form_required_field($element, FormStateInterface $form_st
   // will do the job instead (either by preventing the parent form submission
   // or by adding a new referenced entity).
   if (!$has_children && !$form_open) {
-    /** @var \Drupal\Core\Field\FieldDefinitionInterface $instance */
     $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-    $form_state->setError($element, t('!name field is required.', array('!name' => $instance->getLabel())));
+    $form_state->setError($element, t('!name field is required.', array('!name' => $instance['label'])));
   }
 }
 
