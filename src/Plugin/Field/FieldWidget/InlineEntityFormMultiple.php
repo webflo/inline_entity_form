@@ -491,6 +491,13 @@ class InlineEntityFormMultiple extends WidgetBase implements ContainerFactoryPlu
         '#weight' => 100,
       );
 
+      // For entities with only one bundle such as user we simply default to
+      // using the entity type as the only available bundle.
+      if (empty($settings['handler_settings']['target_bundles'])) {
+        $settings['handler_settings']['target_bundles'][] = $context['entity_type'];
+        $context['allowed_bundles'][$context['entity_type']] = $context['entity_type'];
+      }
+
       // The user is allowed to create an entity of at least one bundle.
       if ($target_bundles_count) {
         // Let the user select the bundle, if multiple are available.
