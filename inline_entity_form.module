@@ -619,7 +619,22 @@ function theme_inline_entity_form_entity_table($variables) {
 
     // Add fields that represent the entity.
     foreach ($fields as $field_name => $field) {
-      $data = $entity->get($field_name)->getString();
+      if ($field['type'] == 'property') {
+        $data = $entity->get($field_name)->getString();
+      }
+      elseif ($field['type'] == 'callback') {
+        $arguments = array(
+          'entity' => $entity,
+          'variables' => $variables,
+        );
+
+        if (isset($field['callback_arguments'])) {
+          $arguments = array_merge($arguments, $field['callback_arguments']);
+        }
+
+        $data = call_user_func_array($field['callback'], $arguments);
+      }
+
       $cells[] = array('data' => $data, 'class' => array('inline-entity-form-' . $entity_type . '-' . $field_name));
     }
 
