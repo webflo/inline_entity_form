@@ -526,9 +526,8 @@ function inline_entity_form_required_field($element, FormStateInterface $form_st
   // will do the job instead (either by preventing the parent form submission
   // or by adding a new referenced entity).
   if (!$has_children && !$form_open) {
-    /** @var \Drupal\Core\Field\FieldDefinitionInterface $instance */
     $instance = $form_state->get(['inline_entity_form', $ief_id, 'instance']);
-    $form_state->setError($element, t('!name field is required.', array('!name' => $instance->getLabel())));
+    $form_state->setError($element, t('!name field is required.', array('!name' => $instance['label'])));
   }
 }
 
@@ -561,21 +560,28 @@ function theme_inline_entity_form_entity_table($variables) {
   $form = $variables['form'];
   $entity_type = $form['#entity_type'];
   $fields = $form['#table_fields'];
-  // Sort the fields by weight.
-  uasort($fields, array(
-    '\Drupal\Component\Utility\SortArray',
-    'sortByWeightElement'
-  ));
-  // If one of the rows is in form context, disable tabledrag.
-  $has_tabledrag = TRUE;
-  foreach (Element::children($form) as $key) {
-    if (!empty($form[$key]['form'])) {
-      $has_tabledrag = FALSE;
+  $cardinality = $variables['form']['#element']['cardinality'];
+
+  // By default disable tabledrag.
+  $has_tabledrag = FALSE;
+  // Check cardinality of element.
+  if($cardinality > 1 || $cardinality == -1) {
+    $has_tabledrag = TRUE;
+    foreach (Element::children($form) as $key) {
+      // If one of the rows is in form context, disable tabledrag.
+      if (!empty($form[$key]['form'])) {
+        $has_tabledrag = FALSE;
+      }
     }
   }
 
   $header = array();
   if ($has_tabledrag) {
+    // Sort the fields by weight.
+    uasort($fields, array(
+      '\Drupal\Component\Utility\SortArray',
+      'sortByWeightElement'
+    ));
     $header[] = array('data' => '', 'class' => array('ief-tabledrag-header'));
     $header[] = array('data' => t('Sort order'), 'class' => array('ief-sort-order-header'));
   }
